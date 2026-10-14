@@ -65,16 +65,20 @@ interface DiplomacyQuestion {
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
+  // Omat kaupungit ja siilo (Pohjois-Amerikka / Länsi)
+  const playerSiloPos = { x: 220, y: 200 };
   const [playerCities, setPlayerCities] = useState<City[]>([
-    { id: 'pc1', name: 'Helsinki', x: 175, y: 290, hp: 100, alive: true },
-    { id: 'pc2', name: 'Tampere', x: 160, y: 240, hp: 100, alive: true },
-    { id: 'pc3', name: 'Oulu', x: 210, y: 180, hp: 100, alive: true }
+    { id: 'pc1', name: 'Washington', x: 270, y: 220, hp: 100, alive: true },
+    { id: 'pc2', name: 'New York', x: 290, y: 190, hp: 100, alive: true },
+    { id: 'pc3', name: 'Los Angeles', x: 130, y: 240, hp: 100, alive: true }
   ]);
 
+  // Vihollisen kaupungit ja siilo (Euraasia / Venäjä)
+  const enemySiloPos = { x: 730, y: 160 };
   const [enemyCities, setEnemyCities] = useState<City[]>([
-    { id: 'ec1', name: 'Moskova', x: 750, y: 190, hp: 100, alive: true },
-    { id: 'ec2', name: 'Pietari', x: 700, y: 150, hp: 100, alive: true },
-    { id: 'ec3', name: 'Novosibirsk', x: 840, y: 220, hp: 100, alive: true }
+    { id: 'ec1', name: 'Moskova', x: 680, y: 180, hp: 100, alive: true },
+    { id: 'ec2', name: 'Pietari', x: 650, y: 140, hp: 100, alive: true },
+    { id: 'ec3', name: 'Novosibirsk', x: 790, y: 190, hp: 100, alive: true }
   ]);
 
   const [playerABM, setPlayerABM] = useState<number>(12);
@@ -113,9 +117,6 @@ export default function App() {
   const [currentQIndex, setCurrentQIndex] = useState<number>(0);
   const currentQ = questionsList[currentQIndex];
 
-  const playerSiloPos = { x: 200, y: 260 };
-  const enemySiloPos = { x: 800, y: 170 };
-
   const missilesRef = useRef<MissileData[]>([]);
   const explosionsRef = useRef<ExplosionData[]>([]);
   const particlesRef = useRef<Particle[]>([]);
@@ -135,6 +136,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [gameOver, defcon]);
 
+  // Pääsilmukka
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -195,6 +197,7 @@ export default function App() {
       lastTime = time;
       if (dt > 0.1) dt = 0.1;
 
+      // Vihollisen hyökkäys alkaa sen omasta siilosta kohti pelaajan kaupunkeja
       if (!gameOver && defcon === 1) {
         aiTimer += dt;
         if (aiTimer > 8.0) {
@@ -219,7 +222,7 @@ export default function App() {
             isInterceptor: false,
             trail: []
           });
-          setMessage("HÄLYTYS: Vihollinen on laukaissut ICBM-ohjuksen kohteeseen!");
+          setMessage("HÄLYTYS: Vihollinen on laukaissut ICBM-ohjuksen siilostaan kohteeseen!");
         }
       }
 
@@ -331,8 +334,11 @@ export default function App() {
         ctx.fillStyle = '#03060a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
+      // Piirretään oma siilo (pelaajan laukaisupaikka)
       ctx.fillStyle = '#00ffff';
-      ctx.fillRect(playerSiloPos.x - 8, playerSiloPos.y - 8, 16, 16);
+      ctx.fillRect(playerSiloPos.x - 10, playerSiloPos.y - 10, 20, 20);
+      ctx.font = '11px Courier New';
+      ctx.fillText('OMA SIILO', playerSiloPos.x - 25, playerSiloPos.y - 15);
 
       playerCities.forEach(city => {
         ctx.fillStyle = city.alive ? '#00ffff' : '#555555';
@@ -342,8 +348,11 @@ export default function App() {
         ctx.fillText(city.name, city.x - 15, city.y - 12);
       });
 
+      // Piirretään vihollisen siilo (vihollisen laukaisupaikka)
       ctx.fillStyle = '#ff3333';
-      ctx.fillRect(enemySiloPos.x - 8, enemySiloPos.y - 8, 16, 16);
+      ctx.fillRect(enemySiloPos.x - 10, enemySiloPos.y - 10, 20, 20);
+      ctx.font = '11px Courier New';
+      ctx.fillText('VIHOLLISEN SIILO', enemySiloPos.x - 35, enemySiloPos.y - 15);
 
       enemyCities.forEach(city => {
         ctx.fillStyle = city.alive ? '#ff3333' : '#555555';
@@ -470,6 +479,7 @@ export default function App() {
     setCurrentQIndex((prev) => (prev + 1) % questionsList.length);
   };
 
+  // Pelaajan ohjuksen laukaisu omasta siilosta (tai torjunta)
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (gameOver) return;
     if (defcon > 1) {
@@ -492,8 +502,9 @@ export default function App() {
         distance: Math.hypot(clickX - playerSiloPos.x, clickY - playerSiloPos.y),
         traveled: 0, speed: 220, isPlayer: true, active: true, isInterceptor: true, trail: []
       });
-      setMessage("ABM-torjuntaohjus laukaistu.");
+      setMessage("ABM-torjuntaohjus laukaistu omasta tukikohdasta.");
     } else if (playerSilos > 0) {
+      // ICBM lähetetään pelaajan omasta siilosta kohti klikattua kohdetta
       missilesRef.current.push({
         id: Math.random(),
         startX: playerSiloPos.x, startY: playerSiloPos.y,
@@ -503,7 +514,7 @@ export default function App() {
         distance: Math.hypot(clickX - playerSiloPos.x, clickY - playerSiloPos.y),
         traveled: 0, speed: 85, isPlayer: true, active: true, isInterceptor: false, trail: []
       });
-      setMessage("Strateginen ICBM laukaistu kohteeseen.");
+      setMessage("Strateginen ICBM laukaistu omasta siilosta kohteeseen.");
     }
   };
 
