@@ -70,12 +70,10 @@ export default function App() {
   const [techLevel, setTechLevel] = useState<number>(1);
   const [enemyTechLevel, setEnemyTechLevel] = useState<number>(1);
 
-  // Presidentin hallinnon resurssit ja vaalikannatus
   const [approvalRating, setApprovalRating] = useState<number>(50); // %
   const [bombers, setBombers] = useState<number>(2); // Pommittajalaivueet
   const [submarines, setSubmarines] = useState<number>(1); // Ydinsukellusveneet
 
-  // Tarkat maantieteelliset koordinaatit maailmankartalle (950x420)
   const playerSiloPos = { x: 260, y: 165 };
   const [playerCities, setPlayerCities] = useState<City[]>([
     { id: 'pc1', name: 'Washington', x: 305, y: 175, hp: 100, alive: true },
@@ -95,36 +93,19 @@ export default function App() {
 
   const [defcon, setDefcon] = useState<number>(3);
   const [crisisLevel, setCrisisLevel] = useState<number>(20);
-  const [showDiplomacyModal, setShowDiplomacyModal] = useState<boolean>(true); // Avautuu heti pelin alussa vaalivalinnalla
+  const [showDiplomacyModal, setShowDiplomacyModal] = useState<boolean>(true);
   const [gameOver, setGameOver] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("HERRA PRESIDENTTI: Astuit juuri virkaasi. Kylmä sota on alkanut, ja kansakunta odottaa linjauksianne.");
 
+  // Laajennettu valikoima diplomaattisia ja strategisia kysymyksiä
   const questionsList: DiplomacyQuestion[] = [
     {
       title: "VIRKAASTUMINEN // STRATEGINEN DOKTRIINI",
       question: "Herra presidentti, teille on esitetty ensimmäinen turvallisuuspoliittinen linjaus. Mihin asehaarajuoni budjetti keskitetään?",
       options: [
-        {
-          text: "A) Pommittajalaivueiden massiivinen laajennus (Kriisi +20%, Vaalikannatus +12%)",
-          crisisEffect: 20,
-          resourceEffect: -10,
-          approvalEffect: 12,
-          reply: "Pommittajaohjelma sai kansoilta suuren suosion, mutta vihollinen tulkitsee sen provokaatioksi!"
-        },
-        {
-          text: "B) Sukellusveneohjelman kiihdyttäminen merillä (Kriisi stabiili, Vaalikannatus +5%)",
-          crisisEffect: 0,
-          resourceEffect: -10,
-          approvalEffect: 5,
-          reply: "Ydinsukellusveneet upotetaan syvyyksiin turvaamaan vastaiskukykyä."
-        },
-        {
-          text: "C) Puolustuksellinen linja: Tutkaverkot ja ABM-torjunta (Kriisi -10%, Vaalikannatus +15%)",
-          crisisEffect: -10,
-          resourceEffect: -5,
-          approvalEffect: 15,
-          reply: "Kansa ilahtui rauhanomaisemmasta puolustuslinjasta. Jännitteet laskivat."
-        }
+        { text: "A) Pommittajalaivueiden massiivinen laajennus", crisisEffect: 20, resourceEffect: -10, approvalEffect: 12, reply: "Pommittajaohjelma sai kansoilta suuren suosion, mutta vihollinen tulkitsee sen provokaatioksi!" },
+        { text: "B) Sukellusveneohjelman kiihdyttäminen merillä", crisisEffect: 0, resourceEffect: -10, approvalEffect: 5, reply: "Ydinsukellusveneet upotetaan syvyyksiin turvaamaan vastaiskukykyä." },
+        { text: "C) Puolustuksellinen linja: Tutkaverkot ja ABM-torjunta", crisisEffect: -10, resourceEffect: -5, approvalEffect: 15, reply: "Kansa ilahtui rauhanomaisemmasta puolustuslinjasta. Jännitteet laskivat." }
       ]
     },
     {
@@ -134,6 +115,42 @@ export default function App() {
         { text: "Järjestetään massiivinen ilmasilta ja vältetään yhteenotto.", crisisEffect: -15, resourceEffect: -10, approvalEffect: 8, reply: "Ilmasilta onnistui loistavasti! Kannatus nousi." },
         { text: "Vaaditaan reitin avaamista asevoimin uhaten.", crisisEffect: +30, resourceEffect: +10, approvalEffect: -5, reply: "Uhkaava kanta nosti kriisiprosenttia rajusti!" },
         { text: "Vetäydytään hiljaisesti kiistellyltä alueelta.", crisisEffect: -25, resourceEffect: -5, approvalEffect: -15, reply: "Peräännyitte neuvottelupöydässä, mikä laski kansan luottamusta hallitukseen." }
+      ]
+    },
+    {
+      title: "TIEDUSTELURAPORTTI // SALAISET OPERAATIOT",
+      question: "CIA raportoi vihollisen uudesta salaisesta ohjastukikohdasta. Miten toimitetaan?",
+      options: [
+        { text: "Aloitetaan laajamittainen salainen sabotaasioperaatio.", crisisEffect: +15, resourceEffect: -15, approvalEffect: 6, reply: "Sabotaasi viivästytti vihollista, mutta herätti epäluuloja." },
+        { text: "Vuodetaan tiedot kansainväliselle medialle ja paljastetaan uhka.", crisisEffect: -5, resourceEffect: 0, approvalEffect: 10, reply: "Kansa arvostaa avoimuutta. Vihollisen propaganda menetti tehonsa." },
+        { text: "Ei reagoida, annetaan tilanteen rauhoittua itsestään.", crisisEffect: -10, resourceEffect: +5, approvalEffect: -4, reply: "Tilanne pysyi vakaana, mutta kriitikot pitävät hallitusta heikkona." }
+      ]
+    },
+    {
+      title: "ASERIISUNTASOPIMUS // DIPLOMATIA",
+      question: "Kansainväliset rauhanjärjestöt vaativat vastavuoroista ohjusriisuntaa.",
+      options: [
+        { text: "Allekirjoitetaan sopimus ja vähennetään jännitteitä radikaalisti.", crisisEffect: -35, resourceEffect: +10, approvalEffect: 14, reply: "Historiallinen rauhansopimus solmittu! Kriisi laski merkittävästi." },
+        { text: "Hylätään sopimus teeskennellen vihollisen epärehellisyyttä.", crisisEffect: +15, resourceEffect: -5, approvalEffect: -8, reply: "Sotaosapuolet pettyivät. Jännitteet kiristyivät." },
+        { text: "Vaaditaan ylimääräisiä tarkastuksia, jotka vihollinen hylkää.", crisisEffect: +5, resourceEffect: 0, approvalEffect: 4, reply: "Neuvottelut ajautuivat umpikujaan." }
+      ]
+    },
+    {
+      title: "TALOUSKRIISI // BUDJETTITAISTELU",
+      question: "Valtionvelka kasvaa varustelun vuoksi. Miten rahoitetaan puolustusmenot?",
+      options: [
+        { text: "Leikataan sosiaalimenoja ja suunnataan varat ohjustuotantoon.", crisisEffect: +10, resourceEffect: +25, approvalEffect: -18, reply: "Resurssit kasvoivat, mutta työläiset ja äänestäjät raivostuivat!" },
+        { text: "Korotetaan suuryritysten veroja ja tuetaan kotitalouksia.", crisisEffect: -5, resourceEffect: -10, approvalEffect: 12, reply: "Kansan suosio kasvoi, mutta puolustusteollisuus kärsii." },
+        { text: "Otetaan ulkomaista velkaa ja pidetään budjetti ennallaan.", crisisEffect: 0, resourceEffect: +10, approvalEffect: 2, reply: "Poliittinen kompromissi säilytti nykytilanteen." }
+      ]
+    },
+    {
+      title: "AVARUUSKILPA // TEKNOLOGIAN ETRULINJA",
+      question: "Tiedemiehet ehdottavat satelliittiohjelman käynnistämistä ennen vihollista.",
+      options: [
+        { text: "Rahoitetaan ohjelma täysimääräisesti kansallisen ylpeyden vuoksi.", crisisEffect: +5, resourceEffect: -20, approvalEffect: 20, reply: "Ensimmäinen satelliitti kiertää maapalloa! Vaalikannatus räjähti kasvuun!" },
+        { text: "Keskitytään pelkästään sotilaallisiin mannertenvälisiin ohjuksiin.", crisisEffect: +10, resourceEffect: -10, approvalEffect: -2, reply: "Armeija kiittää, mutta nuoriso pettyi avaruustutkimuksen hylkäämiseen." },
+        { text: "Torjutaan hanke turhana resurssien tuhlauksena.", crisisEffect: -5, resourceEffect: +10, approvalEffect: -8, reply: "Säästitte rahaa, mutta vihollinen voitti teknologisen symbolisen voiton." }
       ]
     }
   ];
@@ -152,7 +169,6 @@ export default function App() {
     img.onload = () => { mapImageRef.current = img; };
   }, []);
 
-  // Vuosien ja talouden kuluminen
   useEffect(() => {
     const interval = setInterval(() => {
       if (gameOver || showDiplomacyModal) return;
@@ -520,6 +536,7 @@ export default function App() {
       return nextCrisis;
     });
 
+    // Siirrytään satunnaisesti seuraavaan kysymykseen listalta
     setCurrentQIndex((prev) => (prev + 1) % questionsList.length);
   };
 
@@ -600,7 +617,6 @@ export default function App() {
           PRESIDENTIN STRATEGINEN ESIKUNTA // KYLMÄ SOTA
         </h1>
 
-        {/* HUD - Mukana vuosi, resurssit, arsenaali ja vaalikannatus */}
         <div style={{ display: 'flex', justifyContent: 'space-between', width: '950px', marginBottom: '8px', fontSize: '12px', borderBottom: '1px solid #1a3a5c', paddingBottom: '6px' }}>
           <div>Vuosi: <strong style={{ color: '#00ffff' }}>{year}</strong> | Kannatus: <strong style={{ color: approvalRating > 40 ? '#00ffcc' : '#ff3333' }}>{approvalRating}%</strong></div>
           <div>Pommittajat: <strong>{bombers}</strong> | Sukellusveneet: <strong>{submarines}</strong></div>
@@ -608,7 +624,6 @@ export default function App() {
           <div>Kriisi: <strong style={{ color: crisisLevel > 70 ? '#ff3333' : 'yellow' }}>{crisisLevel}%</strong> | DEFCON: <strong style={{ color: defcon === 1 ? '#ff3333' : 'yellow' }}>{defcon}</strong></div>
         </div>
 
-        {/* Hallintapainikkeet */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', width: '950px', justifyContent: 'center', flexWrap: 'wrap' }}>
           {!gameOver ? (
               <>
@@ -658,7 +673,6 @@ export default function App() {
           <p style={{ margin: 0, fontWeight: 'bold' }}>{message}</p>
         </div>
 
-        {/* PRESIDENTIN VALINTA / DIPLOMATIAMODAALI */}
         {showDiplomacyModal && !gameOver && (
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(2, 5, 12, 0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
               <div style={{ width: '640px', backgroundColor: '#0b1626', border: '2px solid #00aaff', borderRadius: '8px', padding: '24px', boxShadow: '0 0 35px rgba(0, 170, 255, 0.35)' }}>
