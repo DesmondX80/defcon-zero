@@ -1,8 +1,3 @@
-Pahoittelut, vahingossa mukaan livahti suomenkielistä selitystekstiä koodin alkuun!
-
-Tässä on taas täysin puhdas ja virheetön src/App.tsx-tiedosto. Tyhjennä src/App.tsx ja kopioi tämä koodi sinne:
-
-    TypeScript
 import React, { useEffect, useRef, useState } from 'react';
 
 interface City {
@@ -140,7 +135,6 @@ export default function App() {
     return () => clearInterval(interval);
   }, [gameOver, defcon]);
 
-  // Pääsilmukka
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -539,7 +533,6 @@ export default function App() {
           DEFCON ZERO // STRATEGIC COMMAND
         </h1>
 
-        {/* HUD */}
         <div style={{ display: 'flex', justifyContent: 'space-between', width: '950px', marginBottom: '8px', fontSize: '13px', borderBottom: '1px solid #1a3a5c', paddingBottom: '6px' }}>
           <div>Omat kaupungit: <strong style={{ color: '#00ffff' }}>{playerAliveCount}/3</strong> | ABM: <strong>{playerABM}</strong></div>
           <div>Resurssit: <strong style={{ color: '#ffcc00' }}>{resources} pt</strong></div>
@@ -547,7 +540,6 @@ export default function App() {
           <div>Kriisi: <strong style={{ color: crisisLevel > 70 ? '#ff3333' : 'yellow' }}>{crisisLevel}%</strong> | DEFCON: <strong style={{ color: defcon === 1 ? '#ff3333' : 'yellow' }}>{defcon}</strong></div>
         </div>
 
-        {/* Yläpalkki */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', width: '950px', justifyContent: 'center' }}>
           {defcon > 1 && !gameOver ? (
               <>
@@ -599,7 +591,6 @@ export default function App() {
           )}
         </div>
 
-        {/* Canvas */}
         <canvas
             ref={canvasRef}
             width={950}
@@ -608,12 +599,10 @@ export default function App() {
             style={{ border: '2px solid #1a3a5c', boxShadow: '0 0 25px rgba(0, 255, 204, 0.15)', cursor: defcon === 1 && !gameOver ? 'crosshair' : 'not-allowed', background: '#020408' }}
         />
 
-        {/* SUURENNETTU HÄLYTYS- JA TILANNEVIESTI */}
         <div style={{ marginTop: '12px', fontSize: '16px', color: '#ffcc00', textAlign: 'center', maxWidth: '950px', background: '#081220', border: '1px solid #1a3a5c', padding: '10px 16px', borderRadius: '4px', letterSpacing: '1px', textShadow: '0 0 8px rgba(255, 204, 0, 0.3)' }}>
           <p style={{ margin: 0, fontWeight: 'bold' }}>{message}</p>
         </div>
 
-        {/* POPUP DIALOGI */}
         {showDiplomacyModal && defcon > 1 && !gameOver && (
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(2, 5, 12, 0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
               <div style={{ width: '600px', backgroundColor: '#0b1626', border: '2px solid #00aaff', borderRadius: '8px', padding: '20px', boxShadow: '0 0 30px rgba(0, 170, 255, 0.3)' }}>
