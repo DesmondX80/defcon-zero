@@ -1,8 +1,6 @@
-Tämä muuttaa pelin strategista syvyyttä loistavasti! Pelistä tulee paljon taktisempi, kun siilojen lisäksi kartalla on useita nimettyjä suurkaupunkeja, jotka muodostavat valtion väestö- ja teollisuuskeskukset. Kun kaupungit tuhotaan ydiniskuilla, osapuoli menettää pisteensä ja häviää sodan.
+Suurennetaan tilanne- ja hälytystekstien fonttikokoa, jotta varoitukset ja viestit erottuvat kunnolla ruudulla!
 
-    Valitaan peliin molemmille osapuolille omat nimetyt suurkaupungit (esimerkiksi Cold War -henkiset tai suomalaiset/kansainväliset solmukohdat).
-
-Päivitetään src/App.tsx-tiedostoon kaupunkijärjestelmä ja kaupunkien tuhoaminen:
+Päivitä src/App.tsx-tiedostoon tämä versio, jossa alareunan viestipaneelin teksti on nostettu 16px fonttikokoon (bold & kirjasinväri korostettuna) ja yläpalkin hälytykset erottuvat selkeästi:
 
     TypeScript
 import React, { useEffect, useRef, useState } from 'react';
@@ -12,7 +10,7 @@ interface City {
   name: string;
   x: number;
   y: number;
-  hp: number; // Esim. 100%
+  hp: number;
   alive: boolean;
 }
 
@@ -72,7 +70,6 @@ interface DiplomacyQuestion {
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Pelaajan ja vihollisen kaupungit
   const [playerCities, setPlayerCities] = useState<City[]>([
     { id: 'pc1', name: 'Helsinki', x: 175, y: 290, hp: 100, alive: true },
     { id: 'pc2', name: 'Tampere', x: 160, y: 240, hp: 100, alive: true },
@@ -128,7 +125,6 @@ export default function App() {
   const explosionsRef = useRef<ExplosionData[]>([]);
   const particlesRef = useRef<Particle[]>([]);
   const mapImageRef = useRef<HTMLImageElement | null>(null);
-  const finalBombardmentTriggered = useRef<boolean>(false);
 
   useEffect(() => {
     const img = new Image();
@@ -205,12 +201,10 @@ export default function App() {
       lastTime = time;
       if (dt > 0.1) dt = 0.1;
 
-      // Tekoälyn iskut sodan aikana
       if (!gameOver && defcon === 1) {
         aiTimer += dt;
         if (aiTimer > 8.0) {
           aiTimer = 0;
-          // Valitse satunnainen elossa oleva pelaajan kaupunki tai siilo maaliksi
           const alivePlayerCities = playerCities.filter(c => c.alive);
           const target = alivePlayerCities.length > 0
               ? alivePlayerCities[Math.floor(Math.random() * alivePlayerCities.length)]
@@ -235,7 +229,6 @@ export default function App() {
         }
       }
 
-      // Ohjusten päivitys
       missilesRef.current.forEach((m) => {
         if (!m.active) return;
         m.prevX = m.currentX;
@@ -256,19 +249,16 @@ export default function App() {
             explosionsRef.current.push({ id: Math.random(), x: m.targetX, y: m.targetY, radius: 5, maxRadius: 70, alpha: 1.0, isPlayer: m.isPlayer, flashAlpha: 1.0, isMushroom: true });
             spawnMushroomParticles(m.targetX, m.targetY);
 
-            // Tarkistetaan osumat kohteisiin
             if (m.isPlayer) {
-              // Osuiko vihollisen kaupunkiin?
               setEnemyCities(prev => prev.map(city => {
                 if (city.alive && Math.hypot(m.targetX - city.x, m.targetY - city.y) < 40) {
-                  const nextHp = city.hp - 100; // Tuhoutuu kerrasta tai vaurioituu
+                  const nextHp = city.hp - 100;
                   if (nextHp <= 0) setMessage(`VIHOLLISKAUPUNKI TUHOUTUI: ${city.name} on pyyhitty pois kartalta!`);
                   return { ...city, hp: nextHp, alive: nextHp > 0 };
                 }
                 return city;
               }));
             } else {
-              // Osuiko pelaajan kaupunkiin?
               setPlayerCities(prev => prev.map(city => {
                 if (city.alive && Math.hypot(m.targetX - city.x, m.targetY - city.y) < 40) {
                   const nextHp = city.hp - 100;
@@ -293,7 +283,6 @@ export default function App() {
         }
       });
 
-      // Tarkistetaan voittaja / häviäjä (kaikki kaupungit tuhottu)
       if (!gameOver) {
         const playerAnyAlive = playerCities.some(c => c.alive);
         const enemyAnyAlive = enemyCities.some(c => c.alive);
@@ -307,7 +296,6 @@ export default function App() {
         }
       }
 
-      // Hiukkasten päivitys
       particlesRef.current.forEach((p) => {
         p.x += p.vx * dt;
         p.y += p.vy * dt;
@@ -316,7 +304,6 @@ export default function App() {
       });
       particlesRef.current = particlesRef.current.filter((p) => p.life < p.maxLife);
 
-      // Torjunta ilmassa
       explosionsRef.current.forEach((ex) => {
         if (ex.isPlayer) {
           missilesRef.current.forEach((m) => {
@@ -340,7 +327,6 @@ export default function App() {
       });
       explosionsRef.current = explosionsRef.current.filter((ex) => ex.alpha > 0);
 
-      // --- PIIRTO ---
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       if (mapImageRef.current) {
@@ -351,7 +337,6 @@ export default function App() {
         ctx.fillStyle = '#03060a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
-      // Pelaajan siilo ja kaupungit
       ctx.fillStyle = '#00ffff';
       ctx.fillRect(playerSiloPos.x - 8, playerSiloPos.y - 8, 16, 16);
 
@@ -363,7 +348,6 @@ export default function App() {
         ctx.fillText(city.name, city.x - 15, city.y - 12);
       });
 
-      // Vihollisen siilo ja kaupungit
       ctx.fillStyle = '#ff3333';
       ctx.fillRect(enemySiloPos.x - 8, enemySiloPos.y - 8, 16, 16);
 
@@ -375,7 +359,6 @@ export default function App() {
         ctx.fillText(city.name, city.x - 15, city.y - 12);
       });
 
-      // Ohjukset
       missilesRef.current.forEach((m) => {
         for (let i = 0; i < m.trail.length - 1; i++) {
           const pt1 = m.trail[i];
@@ -420,7 +403,6 @@ export default function App() {
         ctx.restore();
       });
 
-      // Hiukkaset
       particlesRef.current.forEach((p) => {
         const alpha = 1 - (p.life / p.maxLife);
         ctx.fillStyle = p.color;
@@ -431,7 +413,6 @@ export default function App() {
         ctx.globalAlpha = 1.0;
       });
 
-      // Räjähdykset
       explosionsRef.current.forEach((ex) => {
         ctx.save();
 
@@ -548,7 +529,6 @@ export default function App() {
     } else { setMessage("Ei tarpeeksi resursseja (vaatii 15 pt)."); }
   };
 
-  // Lasketaan elossa olevat kaupungit HUDiin
   const playerAliveCount = playerCities.filter(c => c.alive).length;
   const enemyAliveCount = enemyCities.filter(c => c.alive).length;
 
@@ -613,7 +593,7 @@ export default function App() {
                 </button>
               </>
           ) : (
-              <div style={{ fontSize: '13px', color: gameOver ? '#00ffff' : '#ff3333', fontWeight: 'bold' }}>
+              <div style={{ fontSize: '15px', color: gameOver ? '#00ffff' : '#ff3333', fontWeight: 'bold', letterSpacing: '1px' }}>
                 {gameOver ? 'PELI PÄÄTTYI. Kaikki vastapuolen kaupungit on tuhottu.' : '⚠ SOTA ON SYTTYNYT! Puolusta kaupunkejasi tai iske viholliseen!'}
               </div>
           )}
@@ -628,8 +608,9 @@ export default function App() {
             style={{ border: '2px solid #1a3a5c', boxShadow: '0 0 25px rgba(0, 255, 204, 0.15)', cursor: defcon === 1 && !gameOver ? 'crosshair' : 'not-allowed', background: '#020408' }}
         />
 
-        <div style={{ marginTop: '10px', fontSize: '12px', color: '#88aaff', textAlign: 'center', maxWidth: '900px' }}>
-          <p style={{ color: '#ffcc00', fontWeight: 'bold' }}>{message}</p>
+        {/* SUURENNETTU HÄLYTYS- JA TILANNEVIESTI */}
+        <div style={{ marginTop: '12px', fontSize: '16px', color: '#ffcc00', textAlign: 'center', maxWidth: '950px', background: '#081220', border: '1px solid #1a3a5c', padding: '10px 16px', borderRadius: '4px', letterSpacing: '1px', textShadow: '0 0 8px rgba(255, 204, 0, 0.3)' }}>
+          <p style={{ margin: 0, fontWeight: 'bold' }}>{message}</p>
         </div>
 
         {/* POPUP DIALOGI */}
@@ -647,7 +628,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <p style={{ fontSize: '13px', color: '#ffffff', fontStyle: 'italic', marginBottom: '15px', background: '#05080f', padding: '10px', borderRadius: '4px', borderLeft: '3px solid #ff3333' }}>
+                <p style={{ fontSize: '14px', color: '#ffffff', fontStyle: 'italic', marginBottom: '15px', background: '#05080f', padding: '12px', borderRadius: '4px', borderLeft: '3px solid #ff3333' }}>
                   "{currentQ.question}"
                 </p>
 
@@ -720,7 +701,7 @@ const optionBtnStyle: React.CSSProperties = {
   padding: '10px 12px',
   fontFamily: 'Courier New, monospace',
   cursor: 'pointer',
-  fontSize: '12px',
+  fontSize: '13px',
   textAlign: 'left',
   borderRadius: '4px'
 };
