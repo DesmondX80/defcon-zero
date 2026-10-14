@@ -1,8 +1,3 @@
-Korjataan TypeScriptin ilmoittamat käyttämättömät muuttujat (playerSilos, hoveredButton, enemyAliveCount), jotta kääntäjä menee heittämällä läpi.
-
-    Kopioi tämä virheetön koodi tiedostoon src/App.tsx:
-
-TypeScript
 import React, { useEffect, useRef, useState } from 'react';
 
 interface City {
