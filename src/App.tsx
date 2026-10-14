@@ -26,6 +26,16 @@ interface ExplosionData {
   isPlayer: boolean;
 }
 
+interface DiplomacyPrompt {
+  question: string;
+  options: {
+    text: string;
+    crisisChange: number;
+    resourceChange: number;
+    message: string;
+  }[];
+}
+
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -35,10 +45,20 @@ export default function App() {
   const [playerSilos, setPlayerSilos] = useState<number>(3);
   const [resources, setResources] = useState<number>(40);
 
-  const [defcon, setDefcon] = useState<number>(3);
-  const [crisisLevel, setCrisisLevel] = useState<number>(20);
+  const [defcon, setDefcon] = useState<number>(3); // 3 = Rauha/Diplomatia, 1 = Sota
+  const [crisisLevel, setCrisisLevel] = useState<number>(30); // 0-100%
   const [gameOver, setGameOver] = useState<boolean>(false);
-  const [message, setMessage] = useState<string>("KRIISIVAIHE: Tilanne kiristyy. Valmistaudu tai neuvottele.");
+  const [message, setMessage] = useState<string>("HOTLINE: Vihollisvaltio vaatii vastausta rajakiistaan.");
+
+  // Ajankohtainen diplomaattinen tilanne / kysymys
+  const [currentDiplomacy, setCurrentDiplomacy] = useState<DiplomacyPrompt | null>({
+    question: "Vihollinen vaatii sotaharjoitusten lopettamista rajalla. Miten vastaat?",
+    options: [
+      { text: "Suostutaan vaatimukseen rauhan säilyttämiseksi.", crisisChange: -25, resourceChange: -10, message: "Suostuitte vaatimukseen. Jännitteet laskivat, mutta menetitte resursseja." },
+      { text: "Torjutaan vaatimus jyrkästi ja siirretään joukkoja.", crisisChange: +25, resourceChange: +15, message: "Kieltäydyitte alistumasta. Vihollinen närkästyi, mutta saitte sotilaallista nostetta." },
+      { text: "Vaaditaan vastavuoroisesti vihollisen vetäytymistä.", crisisChange: +10, resourceChange: 0, message: "Kovensitte panoksia vastavaatimuksella." }
+    ]
+  });
 
   // Kohteet kartalla
   const playerSiloPos = { x: 200, y: 260 };
@@ -56,28 +76,16 @@ export default function App() {
     img.onload = () => { mapImageRef.current = img; };
   }, []);
 
-  // Kriisiajan automaattinen eteneminen
+  // Resurssien keruu normaaliin tapaan
   useEffect(() => {
     const interval = setInterval(() => {
-      if (gameOver) return;
-      setResources((prev) => Math.min(100, prev + 4));
-
-      if (defcon > 1) {
-        setCrisisLevel((prev) => {
-          const next = prev + 3;
-          if (next >= 100) {
-            setDefcon(1);
-            setMessage("HÄLYTYS: Neuvottelut kariutuivat! DEFCON 1 - Ydinsota on alkanut!");
-            return 100;
-          }
-          return next;
-        });
-      }
-    }, 3000);
+      if (gameOver || defcon === 1) return;
+      setResources((prev) => Math.min(100, prev + 3));
+    }, 2500);
     return () => clearInterval(interval);
   }, [gameOver, defcon]);
 
-  // Pääsilmukka
+  // Pääsilmukka sodan aikana
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -93,10 +101,9 @@ export default function App() {
       lastTime = time;
       if (dt > 0.1) dt = 0.1;
 
-      // Tekoälyn iskut sodan aikana (tasapainotettu nopeus)
       if (!gameOver && defcon === 1) {
         aiTimer += dt;
-        if (aiTimer > 10.0) {
+        if (aiTimer > 9.0) {
           aiTimer = 0;
           const target = Math.random() > 0.5 ? playerCityPos : playerSiloPos;
           missilesRef.current.push({
@@ -107,16 +114,16 @@ export default function App() {
             currentX: enemySiloPos.x, currentY: enemySiloPos.y,
             distance: Math.hypot(target.x - enemySiloPos.x, target.y - enemySiloPos.y),
             traveled: 0,
-            speed: 85, // Tasapainotettu reaalinopeus
+            speed: 85,
             isPlayer: false,
             active: true,
             isInterceptor: false
           });
-          setMessage("HÄLYTYS: Vihollisen ICBM havaittu tutkassa!");
+          setMessage("HÄLYTYS: Vihollinen on laukaissut ICBM-ohjuksen!");
         }
       }
 
-      // Ohjusten päivitys
+      // Ohjusten ja räjähdysten päivitys
       missilesRef.current.forEach((m) => {
         if (!m.active) return;
         m.traveled += m.speed * dt;
@@ -128,32 +135,16 @@ export default function App() {
           m.active = false;
 
           if (m.isInterceptor) {
-            explosionsRef.current.push({
-              id: Math.random(),
-              x: m.targetX,
-              y: m.targetY,
-              radius: 5,
-              maxRadius: 40,
-              alpha: 1.0,
-              isPlayer: true
-            });
+            explosionsRef.current.push({ id: Math.random(), x: m.targetX, y: m.targetY, radius: 5, maxRadius: 40, alpha: 1.0, isPlayer: true });
           } else {
-            explosionsRef.current.push({
-              id: Math.random(),
-              x: m.targetX,
-              y: m.targetY,
-              radius: 5,
-              maxRadius: 50,
-              alpha: 1.0,
-              isPlayer: m.isPlayer
-            });
+            explosionsRef.current.push({ id: Math.random(), x: m.targetX, y: m.targetY, radius: 5, maxRadius: 50, alpha: 1.0, isPlayer: m.isPlayer });
 
             if (m.isPlayer) {
               if (Math.hypot(m.targetX - enemyCityPos.x, m.targetY - enemyCityPos.y) < 50 ||
                   Math.hypot(m.targetX - enemySiloPos.x, m.targetY - enemySiloPos.y) < 50) {
                 setEnemyHP((prev) => {
                   const next = Math.max(0, prev - 35);
-                  if (next <= 0) { setGameOver(true); setMessage("VOITTO: Vihollisvaltio on neutralisoitu."); }
+                  if (next <= 0) { setGameOver(true); setMessage("VOITTO: Vihollisvaltio on tuhottu."); }
                   return next;
                 });
               }
@@ -162,7 +153,7 @@ export default function App() {
                   Math.hypot(m.targetX - playerSiloPos.x, m.targetY - playerSiloPos.y) < 50) {
                 setPlayerHP((prev) => {
                   const next = Math.max(0, prev - 35);
-                  if (next <= 0) { setGameOver(true); setMessage("TAPPIO: Puolustusjärjestelmät murtuivat."); }
+                  if (next <= 0) { setGameOver(true); setMessage("TAPPIO: Puolustus petti."); }
                   return next;
                 });
               }
@@ -174,15 +165,14 @@ export default function App() {
         }
       });
 
-      // Torjunta lennossa
+      // Torjunta ilmassa
       explosionsRef.current.forEach((ex) => {
         if (ex.isPlayer) {
           missilesRef.current.forEach((m) => {
             if (!m.isPlayer && m.active && !m.isInterceptor) {
-              const dist = Math.hypot(m.currentX - ex.x, m.currentY - ex.y);
-              if (dist < ex.radius) {
+              if (Math.hypot(m.currentX - ex.x, m.currentY - ex.y) < ex.radius) {
                 m.active = false;
-                setMessage("TORJUNTA ONNISTUI: Vihollisen ohjus tuhottu ilmassa!");
+                setMessage("TORJUNTA ONNISTUI: Vihollisen ohjus tuhottu!");
               }
             }
           });
@@ -191,13 +181,9 @@ export default function App() {
 
       missilesRef.current = missilesRef.current.filter((m) => m.active);
 
-      // Räjähdysten laajeneminen
       explosionsRef.current.forEach((ex) => {
-        if (ex.radius < ex.maxRadius) {
-          ex.radius += 50 * dt;
-        } else {
-          ex.alpha -= 0.6 * dt;
-        }
+        if (ex.radius < ex.maxRadius) ex.radius += 50 * dt;
+        else ex.alpha -= 0.6 * dt;
       });
       explosionsRef.current = explosionsRef.current.filter((ex) => ex.alpha > 0);
 
@@ -211,7 +197,6 @@ export default function App() {
         ctx.fillStyle = '#03060a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
-      // Kohteet
       ctx.fillStyle = '#00ffff';
       ctx.fillRect(playerSiloPos.x - 8, playerSiloPos.y - 8, 16, 16);
       ctx.beginPath(); ctx.arc(playerCityPos.x, playerCityPos.y, 8, 0, Math.PI * 2); ctx.fill();
@@ -220,30 +205,19 @@ export default function App() {
       ctx.fillRect(enemySiloPos.x - 8, enemySiloPos.y - 8, 16, 16);
       ctx.beginPath(); ctx.arc(enemyCityPos.x, enemyCityPos.y, 8, 0, Math.PI * 2); ctx.fill();
 
-      // Ohjukset
       missilesRef.current.forEach((m) => {
         ctx.strokeStyle = m.isInterceptor ? '#00ffcc' : m.isPlayer ? '#00ffff' : '#ff3333';
         ctx.lineWidth = m.isInterceptor ? 1 : 2;
-        ctx.beginPath();
-        ctx.moveTo(m.startX, m.startY);
-        ctx.lineTo(m.currentX, m.currentY);
-        ctx.stroke();
-
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(m.currentX, m.currentY, m.isInterceptor ? 2 : 3, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.moveTo(m.startX, m.startY); ctx.lineTo(m.currentX, m.currentY); ctx.stroke();
+        ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(m.currentX, m.currentY, m.isInterceptor ? 2 : 3, 0, Math.PI * 2); ctx.fill();
       });
 
-      // Räjähdykset
       explosionsRef.current.forEach((ex) => {
         ctx.save();
         ctx.globalAlpha = Math.max(0, ex.alpha);
         ctx.strokeStyle = ex.isPlayer ? '#00ffff' : '#ff3333';
         ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(ex.x, ex.y, ex.radius, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.beginPath(); ctx.arc(ex.x, ex.y, ex.radius, 0, Math.PI * 2); ctx.stroke();
         ctx.restore();
       });
 
@@ -254,10 +228,56 @@ export default function App() {
     return () => cancelAnimationFrame(animationFrameId);
   }, [gameOver, defcon]);
 
+  // Diplomaattisen vastauksen käsittely
+  const handleDiplomacyChoice = (crisisChange: number, resourceChange: number, choiceMessage: string) => {
+    setMessage(choiceMessage);
+    setResources((prev) => Math.max(0, prev + resourceChange));
+
+    setCrisisLevel((prev) => {
+      const nextCrisis = Math.max(0, Math.min(100, prev + crisisChange));
+      if (nextCrisis >= 100) {
+        setDefcon(1);
+        setCurrentDiplomacy(null);
+        setMessage("HÄLYTYS: Diplomatia romahti täysin! DEFCON 1 - Ydinsota on alkanut!");
+        return 100;
+      } else if (nextCrisis <= 0) {
+        setMessage("Rauhansopimus allekirjoitettu! Kriisi on tällä erää vältetty.");
+      }
+      return nextCrisis;
+    });
+
+    // Generoidaan uusi satunnainen diplomaattinen haaste jos sota ei vielä alkanut
+    if (crisisLevel < 100) {
+      const randomPrompts: DiplomacyPrompt[] = [
+        {
+          question: "Vihollinen syyttää sinua kyberhyökkäyksestä infrastruktuuriinsa. Miten vastaat?",
+          options: [
+            { text: "Myönnetään tapahtunut ja luvataan korvaukset.", crisisChange: -20, resourceChange: -15, message: "Myönsit virheen. Vihollinen tyytyi korvauksiin." },
+            { text: "Kielletään jyrkästi ja syytetään vihollista provokaatiosta.", crisisChange: +20, resourceChange: +10, message: "Vastasyytökset kiristivät ilmapiiriä." },
+            { text: "Ehdotetaan yhteistä kansainvälistä tutkintaa.", crisisChange: -10, resourceChange: -5, message: "Tutkintapyyntö osti hieman aikaa." }
+          ]
+        },
+        {
+          question: "Rajakaupungeissa on levottomuuksia. Vihollinen vaatii demilitarisointia.",
+          options: [
+            { text: "Vedetään joukot pois rajavyöhykkeeltä.", crisisChange: -30, resourceChange: 0, message: "Peräännyitte rauhan vuoksi. Kriisi laantui." },
+            { text: "Vahvistetaan rajan puolustusta entisestään.", crisisChange: +30, resourceChange: -20, message: "Kasvatitte sotilaallista läsnäoloa. Tilanne on veitsen terällä." },
+            { text: "Jätetään vaatimus huomiotta.", crisisChange: +10, resourceChange: 0, message: "Ignoroitte vihollisen viestin." }
+          ]
+        }
+      ];
+      const nextP = randomPrompts[Math.floor(Math.random() * randomPrompts.length)];
+      // Pieni viive tai suora päivitys
+      setTimeout(() => {
+        setCurrentDiplomacy(nextP);
+      }, 1500);
+    }
+  };
+
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (gameOver) return;
     if (defcon > 1) {
-      setMessage("SOTA EI OLE VIELÄ SYTTYNYT! Käytä diplomatiaa.");
+      setMessage("Kriisi on käynnissä! Vastaa ensin ylhäällä oleviin diplomaattisiin vaatimuksiin.");
       return;
     }
 
@@ -269,54 +289,23 @@ export default function App() {
       setPlayerABM((prev) => prev - 1);
       missilesRef.current.push({
         id: Math.random(),
-        startX: playerSiloPos.x,
-        startY: playerSiloPos.y,
-        targetX: clickX,
-        targetY: clickY,
-        currentX: playerSiloPos.x,
-        currentY: playerSiloPos.y,
+        startX: playerSiloPos.x, startY: playerSiloPos.y,
+        targetX: clickX, targetY: clickY,
+        currentX: playerSiloPos.x, currentY: playerSiloPos.y,
         distance: Math.hypot(clickX - playerSiloPos.x, clickY - playerSiloPos.y),
-        traveled: 0,
-        speed: 220, // Nopea torjuntaohjus
-        isPlayer: true,
-        active: true,
-        isInterceptor: true
+        traveled: 0, speed: 220, isPlayer: true, active: true, isInterceptor: true
       });
       setMessage("ABM-torjuntaohjus laukaistu.");
     } else if (playerSilos > 0) {
       missilesRef.current.push({
         id: Math.random(),
-        startX: playerSiloPos.x,
-        startY: playerSiloPos.y,
-        targetX: clickX,
-        targetY: clickY,
-        currentX: playerSiloPos.x,
-        currentY: playerSiloPos.y,
+        startX: playerSiloPos.x, startY: playerSiloPos.y,
+        targetX: clickX, targetY: clickY,
+        currentX: playerSiloPos.x, currentY: playerSiloPos.y,
         distance: Math.hypot(clickX - playerSiloPos.x, clickY - playerSiloPos.y),
-        traveled: 0,
-        speed: 85, // ICBM lennon nopeus
-        isPlayer: true,
-        active: true,
-        isInterceptor: false
+        traveled: 0, speed: 85, isPlayer: true, active: true, isInterceptor: false
       });
-      setMessage("Strateginen ICBM laukaistu matkaan.");
-    }
-  };
-
-  const negotiatePeace = () => {
-    if (defcon === 1) return;
-    setCrisisLevel((prev) => Math.max(0, prev - 25));
-    setMessage("Neuvottelut laskivat kriisitasoa.");
-  };
-
-  const demandWithdrawal = () => {
-    if (defcon === 1) return;
-    if (Math.random() > 0.4) {
-      setCrisisLevel((prev) => Math.max(0, prev - 40));
-      setMessage("Vihollinen perääntyi hetkellisesti.");
-    } else {
-      setCrisisLevel((prev) => Math.min(100, prev + 35));
-      setMessage("Vaatimus provosoi vihollista! Kriisi kiristyi.");
+      setMessage("Strateginen ICBM laukaistu kohteeseen.");
     }
   };
 
@@ -340,9 +329,10 @@ export default function App() {
       <div style={{ backgroundColor: '#05080f', color: '#00ffcc', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'Courier New, monospace', margin: 0, padding: '20px' }}>
 
         <h1 style={{ fontSize: '20px', letterSpacing: '3px', marginBottom: '8px', textShadow: '0 0 10px rgba(0,255,204,0.4)' }}>
-          DEFCON ZERO // REAL-TIME STRATEGY
+          DEFCON ZERO // HOTLINE DIPLOMACY
         </h1>
 
+        {/* HUD */}
         <div style={{ display: 'flex', justifyContent: 'space-between', width: '950px', marginBottom: '8px', fontSize: '13px', borderBottom: '1px solid #1a3a5c', paddingBottom: '6px' }}>
           <div>Pelaajan Kunto: <strong style={{ color: '#00ffff' }}>{playerHP}%</strong> | Siilot: <strong>{playerSilos}</strong> | ABM: <strong>{playerABM}</strong></div>
           <div>Resurssit: <strong style={{ color: '#ffcc00' }}>{resources} pt</strong></div>
@@ -350,26 +340,36 @@ export default function App() {
           <div>Kriisi: <strong style={{ color: crisisLevel > 70 ? '#ff3333' : 'yellow' }}>{crisisLevel}%</strong> | DEFCON: <strong style={{ color: defcon === 1 ? '#ff3333' : 'yellow' }}>{defcon}</strong></div>
         </div>
 
-        <div style={{ display: 'flex', gap: '15px', marginBottom: '10px', width: '950px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          {defcon > 1 ? (
+        {/* Diplomaattinen Hotline-paneeli tai Asevarustelu */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '10px', width: '950px', background: '#0b1626', border: '1px solid #1a3a5c', padding: '10px', borderRadius: '4px' }}>
+          {defcon > 1 && currentDiplomacy ? (
               <>
-                <div style={{ fontSize: '12px', color: '#00aaff', width: '100%', textAlign: 'center', marginBottom: '4px' }}>--- DIPLOMATIA & KRIISINHALLINTA ---</div>
-                <button onClick={negotiatePeace} style={{...btnStyle, borderColor: '#00aaff', color: '#00aaff'}}>Neuvottele Rauhasta</button>
-                <button onClick={demandWithdrawal} style={{...btnStyle, borderColor: '#ffcc00', color: '#ffcc00'}}>Vaadi Vetäytymistä</button>
-                <button onClick={buildSilo} style={btnStyle}>Rakenna Siilo (30 pt)</button>
-                <button onClick={buildABM} style={btnStyle}>Osta ABM (15 pt)</button>
+                <div style={{ color: '#00aaff', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}>🚨 DIPLOMAATTINEN KRIISI // HOTLINE</div>
+                <p style={{ fontSize: '13px', color: '#ffffff', marginBottom: '10px', textAlign: 'center' }}>{currentDiplomacy.question}</p>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {currentDiplomacy.options.map((opt, idx) => (
+                      <button key={idx} onClick={() => handleDiplomacyChoice(opt.crisisChange, opt.resourceChange, opt.message)} style={btnStyle}>
+                        {opt.text}
+                      </button>
+                  ))}
+                </div>
+                <div style={{ marginTop: '8px', display: 'flex', gap: '15px' }}>
+                  <button onClick={buildSilo} style={{...btnStyle, borderColor: '#ffcc00', color: '#ffcc00'}}>Rakenna Siilo (30 pt)</button>
+                  <button onClick={buildABM} style={{...btnStyle, borderColor: '#ffcc00', color: '#ffcc00'}}>Osta ABM (15 pt)</button>
+                </div>
               </>
           ) : (
-              <div style={{ fontSize: '13px', color: '#ff3333', fontWeight: 'bold', width: '100%', textAlign: 'center' }}>
-                ⚠ SOTA ON SYTTYNYT! Klikkaa vasenta puolta ampuaksesi ABM-torjuntaohjuksia, oikeaa puolta hyökätäksesi.
+              <div style={{ fontSize: '13px', color: '#ff3333', fontWeight: 'bold', textAlign: 'center' }}>
+                ⚠ SOTA ON SYTTYNYT! Diplomatia epäonnistui. Puolusta maata tai hyökkää viholliseen.
               </div>
           )}
         </div>
 
+        {/* Canvas */}
         <canvas
             ref={canvasRef}
             width={950}
-            height={440}
+            height={400}
             onClick={handleCanvasClick}
             style={{ border: '2px solid #1a3a5c', boxShadow: '0 0 25px rgba(0, 255, 204, 0.15)', cursor: defcon === 1 ? 'crosshair' : 'not-allowed', background: '#020408' }}
         />
@@ -383,7 +383,7 @@ export default function App() {
 }
 
 const btnStyle: React.CSSProperties = {
-  backgroundColor: '#0b1626',
+  backgroundColor: '#05080f',
   color: '#00ffcc',
   border: '1px solid #00ffcc',
   padding: '6px 12px',
