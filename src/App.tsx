@@ -1,3 +1,8 @@
+Korjataan TypeScriptin ilmoittamat käyttämättömät muuttujat (playerSilos, hoveredButton, enemyAliveCount), jotta kääntäjä menee heittämällä läpi.
+
+    Kopioi tämä virheetön koodi tiedostoon src/App.tsx:
+
+TypeScript
 import React, { useEffect, useRef, useState } from 'react';
 
 interface City {
@@ -65,12 +70,10 @@ interface DiplomacyQuestion {
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Vuosiluku ja varustelutaso
   const [year, setYear] = useState<number>(1946);
-  const [techLevel, setTechLevel] = useState<number>(1); // 1 = Prototyypit, 2 = Ohjusohjelma, 3 = Mannerjälkeiset ICBM:t
+  const [techLevel, setTechLevel] = useState<number>(1);
   const [enemyTechLevel, setEnemyTechLevel] = useState<number>(1);
 
-  // Oma siilo ja kaupungit
   const playerSiloPos = { x: 210, y: 150 };
   const [playerCities, setPlayerCities] = useState<City[]>([
     { id: 'pc1', name: 'Washington', x: 265, y: 175, hp: 100, alive: true },
@@ -78,7 +81,6 @@ export default function App() {
     { id: 'pc3', name: 'Los Angeles', x: 150, y: 185, hp: 100, alive: true }
   ]);
 
-  // Vihollisen siilo ja kaupungit
   const enemySiloPos = { x: 670, y: 130 };
   const [enemyCities, setEnemyCities] = useState<City[]>([
     { id: 'ec1', name: 'Moskova', x: 650, y: 140, hp: 100, alive: true },
@@ -87,7 +89,6 @@ export default function App() {
   ]);
 
   const [playerABM, setPlayerABM] = useState<number>(5);
-  const [playerSilos, setPlayerSilos] = useState<number>(1);
   const [resources, setResources] = useState<number>(20);
 
   const [defcon, setDefcon] = useState<number>(3);
@@ -95,8 +96,6 @@ export default function App() {
   const [showDiplomacyModal, setShowDiplomacyModal] = useState<boolean>(false);
   const [gameOver, setGameOver] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("VUOSI 1946: Toinen maailmansota on päättynyt. Kylmä sota ja varustelukilpailu ovat alkaneet.");
-
-  const [hoveredButton, setHoveredButton] = useState<string | null>(null);
 
   const questionsList: DiplomacyQuestion[] = [
     {
@@ -132,15 +131,12 @@ export default function App() {
     img.onload = () => { mapImageRef.current = img; };
   }, []);
 
-  // Ajan kuluminen ja resurssien kertyminen varusteluvaiheessa
   useEffect(() => {
     const interval = setInterval(() => {
       if (gameOver) return;
 
-      // Vuodet kuluvat eteenpäin
       setYear((prevYear) => {
         const nextYear = prevYear + 1;
-        // Vuosien myötä kriisi ja vihollisen teknologia kehittyvät automaattisesti
         if (nextYear % 3 === 0 && defcon > 1) {
           setEnemyTechLevel((t) => Math.min(3, t + 1));
           setCrisisLevel((c) => {
@@ -156,14 +152,12 @@ export default function App() {
         return nextYear;
       });
 
-      // Resursseja kertyy vuodessa
       setResources((prev) => Math.min(100, prev + 5));
     }, 4000);
 
     return () => clearInterval(interval);
   }, [gameOver, defcon]);
 
-  // Pääsilmukka
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -224,7 +218,6 @@ export default function App() {
       lastTime = time;
       if (dt > 0.1) dt = 0.1;
 
-      // Jos sota on syttynyt (DEFCON 1), vihollinen laukaisee iskuja
       if (!gameOver && defcon === 1) {
         aiTimer += dt;
         if (aiTimer > 7.0) {
@@ -361,7 +354,6 @@ export default function App() {
         ctx.fillStyle = '#03060a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
-      // Oma siilo
       ctx.fillStyle = '#00ffff';
       ctx.fillRect(playerSiloPos.x - 7, playerSiloPos.y - 7, 14, 14);
       ctx.font = '10px Courier New';
@@ -375,7 +367,6 @@ export default function App() {
         ctx.fillText(city.name, city.x - 15, city.y - 8);
       });
 
-      // Vihollisen siilo
       ctx.fillStyle = '#ff3333';
       ctx.fillRect(enemySiloPos.x - 7, enemySiloPos.y - 7, 14, 14);
       ctx.font = '10px Courier New';
@@ -529,7 +520,7 @@ export default function App() {
         traveled: 0, speed: 220, isPlayer: true, active: true, isInterceptor: true, trail: []
       });
       setMessage("ABM-torjuntaohjus laukaistu.");
-    } else if (playerSilos > 0) {
+    } else {
       missilesRef.current.push({
         id: Math.random(),
         startX: playerSiloPos.x, startY: playerSiloPos.y,
@@ -564,7 +555,7 @@ export default function App() {
   };
 
   const playerAliveCount = playerCities.filter(c => c.alive).length;
-  const enemyAliveCount = enemyCities.filter(c => c.alive).length;
+  const enemyAliveCountDisp = enemyCities.filter(c => c.alive).length;
 
   return (
       <div style={{ backgroundColor: '#05080f', color: '#00ffcc', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'Courier New, monospace', margin: 0, padding: '20px', position: 'relative' }}>
@@ -573,23 +564,19 @@ export default function App() {
           DEFCON ZERO // KYLMÄ SOTA JA VARUSTELU
         </h1>
 
-        {/* HUD - Mukana vuosiluku */}
         <div style={{ display: 'flex', justifyContent: 'space-between', width: '950px', marginBottom: '8px', fontSize: '13px', borderBottom: '1px solid #1a3a5c', paddingBottom: '6px' }}>
           <div>Vuosi: <strong style={{ color: '#00ffff' }}>{year}</strong> | Teko-taso: <strong>{techLevel}/3</strong></div>
           <div>Resurssit: <strong style={{ color: '#ffcc00' }}>{resources} pt</strong></div>
           <div>Kriisi: <strong style={{ color: crisisLevel > 70 ? '#ff3333' : 'yellow' }}>{crisisLevel}%</strong> | DEFCON: <strong style={{ color: defcon === 1 ? '#ff3333' : 'yellow' }}>{defcon}</strong></div>
-          <div>Vihollisen taso: <strong style={{ color: '#ff3333' }}>{enemyTechLevel}/3</strong></div>
+          <div>Vihollisen taso: <strong style={{ color: '#ff3333' }}>{enemyTechLevel}/3</strong> ({enemyAliveCountDisp} kaupunkia)</div>
         </div>
 
-        {/* Varustelu- ja neuvottelupainikkeet */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', width: '950px', justifyContent: 'center' }}>
           {!gameOver ? (
               <>
                 {defcon > 1 && (
                     <button
                         onClick={() => setShowDiplomacyModal(true)}
-                        onMouseEnter={() => setHoveredButton('diplomacy')}
-                        onMouseLeave={() => setHoveredButton(null)}
                         style={{ ...btnStyle, borderColor: '#00aaff', color: '#00aaff', fontWeight: 'bold' }}
                     >
                       🤝 NEUVOTTELE / KRIISI
