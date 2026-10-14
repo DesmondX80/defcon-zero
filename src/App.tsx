@@ -1,6 +1,6 @@
-Suurennetaan tilanne- ja hälytystekstien fonttikokoa, jotta varoitukset ja viestit erottuvat kunnolla ruudulla!
+Pahoittelut, vahingossa mukaan livahti suomenkielistä selitystekstiä koodin alkuun!
 
-Päivitä src/App.tsx-tiedostoon tämä versio, jossa alareunan viestipaneelin teksti on nostettu 16px fonttikokoon (bold & kirjasinväri korostettuna) ja yläpalkin hälytykset erottuvat selkeästi:
+Tässä on taas täysin puhdas ja virheetön src/App.tsx-tiedosto. Tyhjennä src/App.tsx ja kopioi tämä koodi sinne:
 
     TypeScript
 import React, { useEffect, useRef, useState } from 'react';
