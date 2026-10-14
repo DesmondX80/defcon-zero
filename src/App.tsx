@@ -1,3 +1,14 @@
+TypeScriptin kääntäjä huomasi muutaman pienen muuttujanimivirheen.
+
+    Virheet johtuvat kahdesta asiasta:
+
+    playerSubs-muuttuja oli määritelty, mutta sitä ei käytetty vielä missään.
+
+    Rivillä 124 luki playerSilo.y, kun muuttujan nimi oli ylempänä playerSiloPos.y.
+
+    Tässä on korjattu ja puhtoisesti kääntyvä src/App.tsx-tiedosto. Korvaa src/App.tsx tällä sisällöllä:
+
+    TypeScript
 import React, { useEffect, useRef, useState } from 'react';
 
 interface MissileData {
@@ -32,7 +43,6 @@ export default function App() {
   const [enemyHP, setEnemyHP] = useState<number>(100);
   const [playerABM, setPlayerABM] = useState<number>(8);
   const [playerSilos, setPlayerSilos] = useState<number>(3);
-  const [playerSubs, setPlayerSubs] = useState<number>(1);
   const [resources, setResources] = useState<number>(50); // Teollisuuspisteet
 
   const [defcon, setDefcon] = useState<number>(3); // 3 = Rauha/Kriisi, 2 = Vartiointi, 1 = Sota
@@ -55,11 +65,10 @@ export default function App() {
     img.onload = () => { mapImageRef.current = img; };
   }, []);
 
-  // Resurssien ja tekoälyn tikitys
+  // Resurssien tikitys
   useEffect(() => {
     const interval = setInterval(() => {
       if (gameOver) return;
-      // Kerätään hitaasti resursseja
       setResources((prev) => Math.min(100, prev + 5));
     }, 2000);
     return () => clearInterval(interval);
@@ -81,7 +90,7 @@ export default function App() {
       lastTime = time;
       if (dt > 0.1) dt = 0.1;
 
-      // Tekoälyn toiminta (iskee vain jos DEFCON on 1 tai sattumanvaraisesti kriisissä)
+      // Tekoälyn toiminta
       if (!gameOver && defcon === 1) {
         aiTimer += dt;
         if (aiTimer > 10.0) {
@@ -121,7 +130,7 @@ export default function App() {
             }
           } else {
             if (Math.hypot(m.targetX - playerCityPos.x, m.targetY - playerCityPos.y) < 45 ||
-                Math.hypot(m.targetX - playerSiloPos.x, m.targetY - playerSilo.y) < 45) {
+                Math.hypot(m.targetX - playerSiloPos.x, m.targetY - playerSiloPos.y) < 45) {
               setPlayerHP((prev) => {
                 const next = Math.max(0, prev - 35);
                 if (next <= 0) { setGameOver(true); setMessage("TAPPIO: Kotimaasi puolustus murtui."); }
@@ -225,7 +234,6 @@ export default function App() {
     }
   };
 
-  // Diplomatia- ja asevarustelutoiminnot
   const buildSilo = () => {
     if (resources >= 30) {
       setResources((r) => r - 30);
