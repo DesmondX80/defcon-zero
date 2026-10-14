@@ -69,18 +69,19 @@ export default function App() {
   const [techLevel, setTechLevel] = useState<number>(1);
   const [enemyTechLevel, setEnemyTechLevel] = useState<number>(1);
 
-  const playerSiloPos = { x: 210, y: 150 };
+  // Tarkat maantieteelliset koordinaatit maailmankartalle (950x420)
+  const playerSiloPos = { x: 260, y: 165 }; // Keski-USA (silo)
   const [playerCities, setPlayerCities] = useState<City[]>([
-    { id: 'pc1', name: 'Washington', x: 265, y: 175, hp: 100, alive: true },
-    { id: 'pc2', name: 'New York', x: 275, y: 160, hp: 100, alive: true },
-    { id: 'pc3', name: 'Los Angeles', x: 150, y: 185, hp: 100, alive: true }
+    { id: 'pc1', name: 'Washington', x: 305, y: 175, hp: 100, alive: true },
+    { id: 'pc2', name: 'New York', x: 315, y: 155, hp: 100, alive: true },
+    { id: 'pc3', name: 'Los Angeles', x: 190, y: 190, hp: 100, alive: true }
   ]);
 
-  const enemySiloPos = { x: 670, y: 130 };
+  const enemySiloPos = { x: 720, y: 130 }; // Siperia / Venäjä (silo)
   const [enemyCities, setEnemyCities] = useState<City[]>([
-    { id: 'ec1', name: 'Moskova', x: 650, y: 140, hp: 100, alive: true },
-    { id: 'ec2', name: 'Pietari', x: 630, y: 115, hp: 100, alive: true },
-    { id: 'ec3', name: 'Novosibirsk', x: 760, y: 150, hp: 100, alive: true }
+    { id: 'ec1', name: 'Moskova', x: 620, y: 145, hp: 100, alive: true },
+    { id: 'ec2', name: 'Pietari', x: 595, y: 125, hp: 100, alive: true },
+    { id: 'ec3', name: 'Novosibirsk', x: 740, y: 155, hp: 100, alive: true }
   ]);
 
   const [playerABM, setPlayerABM] = useState<number>(5);
@@ -106,7 +107,7 @@ export default function App() {
       title: "YDINASETESTI // TIEDE",
       question: "Tiedemiehemme vaativat lisärahoitusta ensimmäiselle vetypommitestille.",
       options: [
-        { text: "Myönnetään varat ja kiihdytetään ohjastutkimusta.", crisisEffect: +20, resourceEffect: -20, reply: "Teknologiataso nousi! Vihollinen reagoi olympialaisella varustelulla." },
+        { text: "Myönnetään varat ja kiihdytetään ohjastutkimusta.", crisisEffect: +20, resourceEffect: -20, reply: "Teknologiataso nousi! Vihollinen reagoi omalla varustelullaan." },
         { text: "Hylätään hanke ja panostetaan tavanomaiseen puolustukseen.", crisisEffect: -10, resourceEffect: +10, reply: "Säästitte resursseja, mutta teknologia laahaa." }
       ]
     }
@@ -341,17 +342,24 @@ export default function App() {
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // Kartan renderöinti parannetulla kontrastilla
       if (mapImageRef.current) {
-        ctx.globalAlpha = 0.45;
+        ctx.save();
+        ctx.globalAlpha = 0.65;
         ctx.drawImage(mapImageRef.current, 0, 0, canvas.width, canvas.height);
-        ctx.globalAlpha = 1.0;
+        // Tummennuskerros taustalle jotta kartta erottuu siististi kyberteemassa
+        ctx.fillStyle = 'rgba(2, 6, 15, 0.4)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
       } else {
         ctx.fillStyle = '#03060a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
+      // Oma siilo
       ctx.fillStyle = '#00ffff';
       ctx.fillRect(playerSiloPos.x - 7, playerSiloPos.y - 7, 14, 14);
       ctx.font = '10px Courier New';
+      ctx.fillStyle = '#00ffff';
       ctx.fillText(`OMA SIILO (Taso ${techLevel})`, playerSiloPos.x - 35, playerSiloPos.y - 10);
 
       playerCities.forEach(city => {
@@ -362,9 +370,11 @@ export default function App() {
         ctx.fillText(city.name, city.x - 15, city.y - 8);
       });
 
+      // Vihollisen siilo
       ctx.fillStyle = '#ff3333';
       ctx.fillRect(enemySiloPos.x - 7, enemySiloPos.y - 7, 14, 14);
       ctx.font = '10px Courier New';
+      ctx.fillStyle = '#ff3333';
       ctx.fillText(`VIHOLLISEN SIILO (Taso ${enemyTechLevel})`, enemySiloPos.x - 45, enemySiloPos.y - 10);
 
       enemyCities.forEach(city => {
