@@ -26,13 +26,14 @@ interface ExplosionData {
   isPlayer: boolean;
 }
 
-interface DiplomacyPrompt {
+interface DiplomacyQuestion {
+  title: string;
   question: string;
   options: {
     text: string;
-    crisisChange: number;
-    resourceChange: number;
-    message: string;
+    crisisEffect: number; // Negatiivinen laskee kriisiä, positiivinen nostaa
+    resourceEffect: number;
+    reply: string;
   }[];
 }
 
@@ -45,20 +46,44 @@ export default function App() {
   const [playerSilos, setPlayerSilos] = useState<number>(3);
   const [resources, setResources] = useState<number>(40);
 
-  const [defcon, setDefcon] = useState<number>(3); // 3 = Rauha/Diplomatia, 1 = Sota
-  const [crisisLevel, setCrisisLevel] = useState<number>(30); // 0-100%
+  const [defcon, setDefcon] = useState<number>(3); // 3 = Kriisidiplomatia, 1 = Sota
+  const [crisisLevel, setCrisisLevel] = useState<number>(35); // 0-100%
   const [gameOver, setGameOver] = useState<boolean>(false);
-  const [message, setMessage] = useState<string>("HOTLINE: Vihollisvaltio vaatii vastausta rajakiistaan.");
+  const [message, setMessage] = useState<string>("HOTLINE: Vihollisen neuvottelija odottaa vastaustasi.");
 
-  // Ajankohtainen diplomaattinen tilanne / kysymys
-  const [currentDiplomacy, setCurrentDiplomacy] = useState<DiplomacyPrompt | null>({
-    question: "Vihollinen vaatii sotaharjoitusten lopettamista rajalla. Miten vastaat?",
-    options: [
-      { text: "Suostutaan vaatimukseen rauhan säilyttämiseksi.", crisisChange: -25, resourceChange: -10, message: "Suostuitte vaatimukseen. Jännitteet laskivat, mutta menetitte resursseja." },
-      { text: "Torjutaan vaatimus jyrkästi ja siirretään joukkoja.", crisisChange: +25, resourceChange: +15, message: "Kieltäydyitte alistumasta. Vihollinen närkästyi, mutta saitte sotilaallista nostetta." },
-      { text: "Vaaditaan vastavuoroisesti vihollisen vetäytymistä.", crisisChange: +10, resourceChange: 0, message: "Kovensitte panoksia vastavaatimuksella." }
-    ]
-  });
+  // Diplomaattiset kysymykset ja vastaukset
+  const questionsList: DiplomacyQuestion[] = [
+    {
+      title: "RAJAKAAKSUS // KRIISINHALLINTA",
+      question: "Tiedustelumme havaitsi ohjuspatterisi siirron rajalle. Vaadimme välitöntä vetäytymistä, tai tulkitsemme sen sotatoimeksi!",
+      options: [
+        { text: "Suostutaan vaatimukseen ja siirretään joukot taakse.", crisisEffect: -25, resourceEffect: -10, reply: "Neuvottelija nyökkää tyytyväisenä. 'Viisas päätös.' (Kriisi laski)" },
+        { text: "Kielletään syytökset ja puolustetaan suvereniteettiamme.", crisisEffect: +25, resourceEffect: +10, reply: "Neuvottelija lyö nyrkkiä pöytään! 'Provokaationne ei jää ilman vastinetta!' (Kriisi nousi)" },
+        { text: "Vaaditaan vastavuoroisesti heidän lentotukialustensa vetämistä.", crisisEffect: +10, resourceEffect: 0, reply: "Neuvottelija ärsyyntyy vaatimuksestanne." }
+      ]
+    },
+    {
+      title: "KAUPPAEMBARGO // KRIISI",
+      question: "Asetatteko teknologiasaarron vai avaatteko rajat yhteisille tarkastuksille?",
+      options: [
+        { text: "Avataan rajat ja sallitaan kansainväliset tarkastukset.", crisisEffect: -30, resourceEffect: -15, reply: "'Tämä osoittaa yhteistyöhalua.' Jännitteet laantuvat." },
+        { text: "Suljetaan rajat kokonaan ja katkaistaan diplomaattisuhteet.", crisisEffect: +35, resourceEffect: +20, reply: "'Olette valinneet konfrontaation tien.' Tilanne kiristyy äärimmilleen!" },
+        { text: "Vastataan kiertämällä pakotteet kolmansien maiden kautta.", crisisEffect: +15, resourceEffect: 0, reply: "Epäluulo kasvuosastoilla." }
+      ]
+    },
+    {
+      title: "MERIALUEET // VÄLISELkkaus",
+      question: "Sotalaivastomme harjoittelee kiistellyillä vesillä. Älkää puuttuko asiaan.",
+      options: [
+        { text: "Tunnustetaan heidän oikeutensa aluevesiin toistaiseksi.", crisisEffect: -20, resourceEffect: -5, reply: "'Alueellinen rauha säilyy.' Jännitteet tasaantuvat hieman." },
+        { text: "Lähetetään omat hävittäjät saattueeseen ja haastetaan heidät.", crisisEffect: +40, resourceEffect: +15, reply: "Vaarallinen ohituslento! Neuvottelija ulvoo raivosta." },
+        { text: "Pidetään matalaa profiilia ja tarkkaillaan tilannetta.", crisisEffect: -5, resourceEffect: 0, reply: "Hiljainen pattitilanne jatkuu." }
+      ]
+    }
+  ];
+
+  const [currentQIndex, setCurrentQIndex] = useState<number>(0);
+  const currentQ = questionsList[currentQIndex];
 
   // Kohteet kartalla
   const playerSiloPos = { x: 200, y: 260 };
@@ -76,12 +101,12 @@ export default function App() {
     img.onload = () => { mapImageRef.current = img; };
   }, []);
 
-  // Resurssien keruu normaaliin tapaan
+  // Resurssien keruu kriisiaikana
   useEffect(() => {
     const interval = setInterval(() => {
       if (gameOver || defcon === 1) return;
       setResources((prev) => Math.min(100, prev + 3));
-    }, 2500);
+    }, 3000);
     return () => clearInterval(interval);
   }, [gameOver, defcon]);
 
@@ -123,7 +148,6 @@ export default function App() {
         }
       }
 
-      // Ohjusten ja räjähdysten päivitys
       missilesRef.current.forEach((m) => {
         if (!m.active) return;
         m.traveled += m.speed * dt;
@@ -165,7 +189,6 @@ export default function App() {
         }
       });
 
-      // Torjunta ilmassa
       explosionsRef.current.forEach((ex) => {
         if (ex.isPlayer) {
           missilesRef.current.forEach((m) => {
@@ -187,7 +210,6 @@ export default function App() {
       });
       explosionsRef.current = explosionsRef.current.filter((ex) => ex.alpha > 0);
 
-      // Piirto
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (mapImageRef.current) {
         ctx.globalAlpha = 0.45;
@@ -228,56 +250,31 @@ export default function App() {
     return () => cancelAnimationFrame(animationFrameId);
   }, [gameOver, defcon]);
 
-  // Diplomaattisen vastauksen käsittely
-  const handleDiplomacyChoice = (crisisChange: number, resourceChange: number, choiceMessage: string) => {
-    setMessage(choiceMessage);
-    setResources((prev) => Math.max(0, prev + resourceChange));
+  // Pelaajan vastaus diplomaattiseen kysymykseen
+  const handleAnswer = (crisisEffect: number, resourceEffect: number, reply: string) => {
+    setMessage(reply);
+    setResources((prev) => Math.max(0, prev + resourceEffect));
 
     setCrisisLevel((prev) => {
-      const nextCrisis = Math.max(0, Math.min(100, prev + crisisChange));
+      const nextCrisis = Math.max(0, Math.min(100, prev + crisisEffect));
       if (nextCrisis >= 100) {
         setDefcon(1);
-        setCurrentDiplomacy(null);
-        setMessage("HÄLYTYS: Diplomatia romahti täysin! DEFCON 1 - Ydinsota on alkanut!");
+        setMessage("HÄLYTYS: Neuvottelut katkesivat täysin! DEFCON 1 - Ydinsota on alkanut!");
         return 100;
       } else if (nextCrisis <= 0) {
-        setMessage("Rauhansopimus allekirjoitettu! Kriisi on tällä erää vältetty.");
+        setMessage("Vihollisen neuvottelija allekirjoitti rauhansopimuksen! Kriisi on ohi.");
       }
       return nextCrisis;
     });
 
-    // Generoidaan uusi satunnainen diplomaattinen haaste jos sota ei vielä alkanut
-    if (crisisLevel < 100) {
-      const randomPrompts: DiplomacyPrompt[] = [
-        {
-          question: "Vihollinen syyttää sinua kyberhyökkäyksestä infrastruktuuriinsa. Miten vastaat?",
-          options: [
-            { text: "Myönnetään tapahtunut ja luvataan korvaukset.", crisisChange: -20, resourceChange: -15, message: "Myönsit virheen. Vihollinen tyytyi korvauksiin." },
-            { text: "Kielletään jyrkästi ja syytetään vihollista provokaatiosta.", crisisChange: +20, resourceChange: +10, message: "Vastasyytökset kiristivät ilmapiiriä." },
-            { text: "Ehdotetaan yhteistä kansainvälistä tutkintaa.", crisisChange: -10, resourceChange: -5, message: "Tutkintapyyntö osti hieman aikaa." }
-          ]
-        },
-        {
-          question: "Rajakaupungeissa on levottomuuksia. Vihollinen vaatii demilitarisointia.",
-          options: [
-            { text: "Vedetään joukot pois rajavyöhykkeeltä.", crisisChange: -30, resourceChange: 0, message: "Peräännyitte rauhan vuoksi. Kriisi laantui." },
-            { text: "Vahvistetaan rajan puolustusta entisestään.", crisisChange: +30, resourceChange: -20, message: "Kasvatitte sotilaallista läsnäoloa. Tilanne on veitsen terällä." },
-            { text: "Jätetään vaatimus huomiotta.", crisisChange: +10, resourceChange: 0, message: "Ignoroitte vihollisen viestin." }
-          ]
-        }
-      ];
-      const nextP = randomPrompts[Math.floor(Math.random() * randomPrompts.length)];
-      // Pieni viive tai suora päivitys
-      setTimeout(() => {
-        setCurrentDiplomacy(nextP);
-      }, 1500);
-    }
+    // Siirrytään seuraavaan kysymykseen kierrossa
+    setCurrentQIndex((prev) => (prev + 1) % questionsList.length);
   };
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (gameOver) return;
     if (defcon > 1) {
-      setMessage("Kriisi on käynnissä! Vastaa ensin ylhäällä oleviin diplomaattisiin vaatimuksiin.");
+      setMessage("Neuvottelut ovat kesken! Vastaa ensin vihollisen neuvottelijalle ylhäällä.");
       return;
     }
 
@@ -329,7 +326,7 @@ export default function App() {
       <div style={{ backgroundColor: '#05080f', color: '#00ffcc', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'Courier New, monospace', margin: 0, padding: '20px' }}>
 
         <h1 style={{ fontSize: '20px', letterSpacing: '3px', marginBottom: '8px', textShadow: '0 0 10px rgba(0,255,204,0.4)' }}>
-          DEFCON ZERO // HOTLINE DIPLOMACY
+          DEFCON ZERO // HOTLINE SUMMIT
         </h1>
 
         {/* HUD */}
@@ -340,30 +337,46 @@ export default function App() {
           <div>Kriisi: <strong style={{ color: crisisLevel > 70 ? '#ff3333' : 'yellow' }}>{crisisLevel}%</strong> | DEFCON: <strong style={{ color: defcon === 1 ? '#ff3333' : 'yellow' }}>{defcon}</strong></div>
         </div>
 
-        {/* Diplomaattinen Hotline-paneeli tai Asevarustelu */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '10px', width: '950px', background: '#0b1626', border: '1px solid #1a3a5c', padding: '10px', borderRadius: '4px' }}>
-          {defcon > 1 && currentDiplomacy ? (
-              <>
-                <div style={{ color: '#00aaff', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}>🚨 DIPLOMAATTINEN KRIISI // HOTLINE</div>
-                <p style={{ fontSize: '13px', color: '#ffffff', marginBottom: '10px', textAlign: 'center' }}>{currentDiplomacy.question}</p>
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                  {currentDiplomacy.options.map((opt, idx) => (
-                      <button key={idx} onClick={() => handleDiplomacyChoice(opt.crisisChange, opt.resourceChange, opt.message)} style={btnStyle}>
-                        {opt.text}
+        {/* Neuvottelupaneeli ja Vihollisen neuvottelija */}
+        {defcon > 1 ? (
+            <div style={{ display: 'flex', width: '950px', background: '#0b1626', border: '1px solid #1a3a5c', borderRadius: '4px', padding: '12px', marginBottom: '10px', gap: '15px', alignItems: 'center' }}>
+
+              {/* Vihollisen neuvottelijan kuvake */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '110px' }}>
+                <div style={{ width: '80px', height: '80px', border: '2px solid #ff3333', borderRadius: '6px', overflow: 'hidden', backgroundColor: '#1a0505', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  {/* Pikselimäinen/retro tyylinen diplomaatin hahmo */}
+                  <div style={{ textAlign: 'center', fontSize: '32px' }}>🗿</div>
+                </div>
+                <span style={{ fontSize: '11px', color: '#ff3333', marginTop: '4px', fontWeight: 'bold' }}>Pääneuvottelija</span>
+              </div>
+
+              {/* Kysymykset ja valinnat */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ fontSize: '12px', color: '#00aaff', fontWeight: 'bold', marginBottom: '4px' }}>{currentQ.title}</div>
+                <p style={{ fontSize: '13px', color: '#ffffff', marginBottom: '10px', fontStyle: 'italic', margin: '0 0 10px 0' }}>
+                  "{currentQ.question}"
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {currentQ.options.map((opt, idx) => (
+                      <button key={idx} onClick={() => handleAnswer(opt.crisisEffect, opt.resourceEffect, opt.reply)} style={optionBtnStyle}>
+                        › {opt.text}
                       </button>
                   ))}
                 </div>
-                <div style={{ marginTop: '8px', display: 'flex', gap: '15px' }}>
+                <div style={{ marginTop: '8px', display: 'flex', gap: '15px', borderTop: '1px solid #142842', paddingTop: '6px' }}>
                   <button onClick={buildSilo} style={{...btnStyle, borderColor: '#ffcc00', color: '#ffcc00'}}>Rakenna Siilo (30 pt)</button>
                   <button onClick={buildABM} style={{...btnStyle, borderColor: '#ffcc00', color: '#ffcc00'}}>Osta ABM (15 pt)</button>
                 </div>
-              </>
-          ) : (
-              <div style={{ fontSize: '13px', color: '#ff3333', fontWeight: 'bold', textAlign: 'center' }}>
-                ⚠ SOTA ON SYTTYNYT! Diplomatia epäonnistui. Puolusta maata tai hyökkää viholliseen.
               </div>
-          )}
-        </div>
+
+            </div>
+        ) : (
+            <div style={{ width: '950px', background: '#260b0b', border: '1px solid #ff3333', padding: '10px', textAlign: 'center', marginBottom: '10px', borderRadius: '4px' }}>
+          <span style={{ fontSize: '13px', color: '#ff3333', fontWeight: 'bold' }}>
+            ⚠ SOTA ON SYTTYNYT! Diplomatia epäonnistui. Puolusta aluettasi tai iske viholliseen!
+          </span>
+            </div>
+        )}
 
         {/* Canvas */}
         <canvas
@@ -391,4 +404,16 @@ const btnStyle: React.CSSProperties = {
   cursor: 'pointer',
   fontSize: '12px',
   borderRadius: '4px'
+};
+
+const optionBtnStyle: React.CSSProperties = {
+  backgroundColor: '#05080f',
+  color: '#00ffcc',
+  border: '1px solid #1a3a5c',
+  padding: '5px 10px',
+  fontFamily: 'Courier New, monospace',
+  cursor: 'pointer',
+  fontSize: '12px',
+  textAlign: 'left',
+  borderRadius: '3px'
 };
