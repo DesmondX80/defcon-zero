@@ -8,6 +8,8 @@ interface MissileData {
   targetY: number;
   currentX: number;
   currentY: number;
+  prevX: number;
+  prevY: number;
   distance: number;
   traveled: number;
   speed: number;
@@ -26,6 +28,7 @@ interface ExplosionData {
   alpha: number;
   isPlayer: boolean;
   flashAlpha: number;
+  isMushroom: boolean;
 }
 
 interface Particle {
@@ -36,6 +39,7 @@ interface Particle {
   life: number;
   maxLife: number;
   color: string;
+  size: number;
 }
 
 interface DiplomacyQuestion {
@@ -64,7 +68,6 @@ export default function App() {
   const [gameOver, setGameOver] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("KRIISIVAIHE: Tilanne on kiristynyt. Avaa neuvotteluyhteys tai varustaudu.");
 
-  // Tilat hover-efekteille
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
 
   const questionsList: DiplomacyQuestion[] = [
@@ -126,19 +129,49 @@ export default function App() {
     let lastTime = performance.now();
     let aiTimer = 0;
 
-    const spawnParticles = (x: number, y: number, count: number, isNuclear: boolean) => {
-      for (let i = 0; i < count; i++) {
+    const spawnMushroomParticles = (x: number, y: number) => {
+      // Sienipilven varsi (stem)
+      for (let i = 0; i < 40; i++) {
+        particlesRef.current.push({
+          x: x + (Math.random() * 12 - 6),
+          y: y - Math.random() * 20,
+          vx: (Math.random() - 0.5) * 8,
+          vy: -Math.random() * 45 - 20,
+          life: 0,
+          maxLife: 2.0 + Math.random() * 1.0,
+          color: ['#ff4400', '#ffaa00', '#555555', '#222222'][Math.floor(Math.random() * 4)],
+          size: Math.random() * 6 + 4
+        });
+      }
+      // Sienipilven hattu (cap)
+      for (let i = 0; i < 70; i++) {
+        const angle = Math.random() * Math.PI - Math.PI; // Leviää ylöspäin
+        const speed = Math.random() * 50 + 20;
+        particlesRef.current.push({
+          x: x,
+          y: y - 50,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * (speed * 0.5) - 15,
+          life: 0,
+          maxLife: 2.5 + Math.random() * 1.2,
+          color: ['#ffffff', '#ffcc00', '#ff3300', '#333333', '#111111'][Math.floor(Math.random() * 5)],
+          size: Math.random() * 10 + 6
+        });
+      }
+    };
+
+    const spawnInterceptorParticles = (x: number, y: number) => {
+      for (let i = 0; i < 20; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = Math.random() * (isNuclear ? 120 : 60);
+        const speed = Math.random() * 60;
         particlesRef.current.push({
           x, y,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
           life: 0,
-          maxLife: 0.5 + Math.random() * (isNuclear ? 1.5 : 0.8),
-          color: isNuclear
-              ? ['#ffffff', '#ffcc00', '#ff3300', '#ff6600', '#555555'][Math.floor(Math.random() * 5)]
-              : ['#00ffff', '#ffffff', '#88ffff'][Math.floor(Math.random() * 3)]
+          maxLife: 0.6 + Math.random() * 0.4,
+          color: ['#00ffff', '#ffffff', '#88ffff'][Math.floor(Math.random() * 3)],
+          size: Math.random() * 3 + 2
         });
       }
     };
@@ -159,6 +192,7 @@ export default function App() {
             targetX: target.x + (Math.random() * 40 - 20),
             targetY: target.y + (Math.random() * 40 - 20),
             currentX: enemySiloPos.x, currentY: enemySiloPos.y,
+            prevX: enemySiloPos.x, prevY: enemySiloPos.y,
             distance: Math.hypot(target.x - enemySiloPos.x, target.y - enemySiloPos.y),
             traveled: 0,
             speed: 85,
@@ -171,8 +205,12 @@ export default function App() {
         }
       }
 
+      // Ohjusten päivitys
       missilesRef.current.forEach((m) => {
         if (!m.active) return;
+        m.prevX = m.currentX;
+        m.prevY = m.currentY;
+
         m.traveled += m.speed * dt;
         let t = m.traveled / m.distance;
 
@@ -182,11 +220,12 @@ export default function App() {
           m.active = false;
 
           if (m.isInterceptor) {
-            explosionsRef.current.push({ id: Math.random(), x: m.targetX, y: m.targetY, radius: 5, maxRadius: 35, alpha: 1.0, isPlayer: true, flashAlpha: 0 });
-            spawnParticles(m.targetX, m.targetY, 20, false);
+            explosionsRef.current.push({ id: Math.random(), x: m.targetX, y: m.targetY, radius: 5, maxRadius: 35, alpha: 1.0, isPlayer: true, flashAlpha: 0, isMushroom: false });
+            spawnInterceptorParticles(m.targetX, m.targetY);
           } else {
-            explosionsRef.current.push({ id: Math.random(), x: m.targetX, y: m.targetY, radius: 5, maxRadius: 65, alpha: 1.0, isPlayer: m.isPlayer, flashAlpha: 1.0 });
-            spawnParticles(m.targetX, m.targetY, 60, true);
+            // Ydinräjähdys
+            explosionsRef.current.push({ id: Math.random(), x: m.targetX, y: m.targetY, radius: 5, maxRadius: 70, alpha: 1.0, isPlayer: m.isPlayer, flashAlpha: 1.0, isMushroom: true });
+            spawnMushroomParticles(m.targetX, m.targetY);
 
             if (m.isPlayer) {
               if (Math.hypot(m.targetX - enemyCityPos.x, m.targetY - enemyCityPos.y) < 55 ||
@@ -222,20 +261,23 @@ export default function App() {
         }
       });
 
+      // Hiukkasten päivitys
       particlesRef.current.forEach((p) => {
         p.x += p.vx * dt;
         p.y += p.vy * dt;
         p.life += dt;
+        p.size += dt * 3; // Pilvipotkut laajenevat nouseessaan
       });
       particlesRef.current = particlesRef.current.filter((p) => p.life < p.maxLife);
 
+      // Torjunta ilmassa
       explosionsRef.current.forEach((ex) => {
         if (ex.isPlayer) {
           missilesRef.current.forEach((m) => {
             if (!m.isPlayer && m.active && !m.isInterceptor) {
               if (Math.hypot(m.currentX - ex.x, m.currentY - ex.y) < ex.radius) {
                 m.active = false;
-                spawnParticles(m.currentX, m.currentY, 30, false);
+                spawnInterceptorParticles(m.currentX, m.currentY);
                 setMessage("TORJUNTA ONNISTUI: Vihollisen ohjus tuhottu!");
               }
             }
@@ -246,12 +288,13 @@ export default function App() {
       missilesRef.current = missilesRef.current.filter((m) => m.active);
 
       explosionsRef.current.forEach((ex) => {
-        if (ex.radius < ex.maxRadius) ex.radius += 60 * dt;
-        else ex.alpha -= 0.4 * dt;
+        if (ex.radius < ex.maxRadius) ex.radius += 50 * dt;
+        else ex.alpha -= 0.3 * dt;
         if (ex.flashAlpha > 0) ex.flashAlpha -= 2.5 * dt;
       });
       explosionsRef.current = explosionsRef.current.filter((ex) => ex.alpha > 0);
 
+      // --- PIIRTO ---
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       if (mapImageRef.current) {
@@ -262,6 +305,7 @@ export default function App() {
         ctx.fillStyle = '#03060a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
+      // Kohteet
       ctx.fillStyle = '#00ffff';
       ctx.fillRect(playerSiloPos.x - 8, playerSiloPos.y - 8, 16, 16);
       ctx.beginPath(); ctx.arc(playerCityPos.x, playerCityPos.y, 8, 0, Math.PI * 2); ctx.fill();
@@ -270,7 +314,9 @@ export default function App() {
       ctx.fillRect(enemySiloPos.x - 8, enemySiloPos.y - 8, 16, 16);
       ctx.beginPath(); ctx.arc(enemyCityPos.x, enemyCityPos.y, 8, 0, Math.PI * 2); ctx.fill();
 
+      // OHJUKSET & LENTORATAVANAT
       missilesRef.current.forEach((m) => {
+        // Savuvana
         for (let i = 0; i < m.trail.length - 1; i++) {
           const pt1 = m.trail[i];
           const pt2 = m.trail[i + 1];
@@ -285,49 +331,86 @@ export default function App() {
           ctx.stroke();
         }
 
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = m.isInterceptor ? '#00ffff' : m.isPlayer ? '#00aaff' : '#ff0000';
-        ctx.fillStyle = '#ffffff';
+        // REALISTINEN OHJUKSEN MUOTO (KULMAN MUKAAN KÄÄNTYVÄ SIIVEKÄS RETA)
+        const dx = m.currentX - m.prevX;
+        const dy = m.currentY - m.prevY;
+        const angle = Math.atan2(dy, dx);
+
+        ctx.save();
+        ctx.translate(m.currentX, m.currentY);
+        ctx.rotate(angle);
+
+        // Moottoriliekki perässä
+        ctx.fillStyle = '#ffaa00';
         ctx.beginPath();
-        ctx.arc(m.currentX, m.currentY, m.isInterceptor ? 2.5 : 4, 0, Math.PI * 2);
+        ctx.moveTo(-8, -2);
+        ctx.lineTo(-14 - Math.random() * 6, 0);
+        ctx.lineTo(-8, 2);
         ctx.fill();
-        ctx.shadowBlur = 0;
+
+        // Ohjuksen runko
+        ctx.fillStyle = m.isInterceptor ? '#00ffff' : m.isPlayer ? '#e0e0e0' : '#ff4444';
+        ctx.beginPath();
+        ctx.moveTo(8, 0);              // Kärki
+        ctx.lineTo(-6, -3);            // Yläkulma
+        ctx.lineTo(-6, 3);             // Alakulma
+        ctx.closePath();
+        ctx.fill();
+
+        // Siivekkeet
+        ctx.fillStyle = '#888888';
+        ctx.fillRect(-6, -5, 3, 10);
+
+        ctx.restore();
       });
 
+      // HIUKKASET (SIENIPILVEN TULI JA SAVU)
       particlesRef.current.forEach((p) => {
         const alpha = 1 - (p.life / p.maxLife);
         ctx.fillStyle = p.color;
         ctx.globalAlpha = Math.max(0, alpha);
         ctx.beginPath();
-        ctx.arc(p.x, p.y, Math.random() * 2 + 1, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1.0;
       });
 
+      // REALISTISET YDINRÄJÄHDYKSET & SIENIPILVET
       explosionsRef.current.forEach((ex) => {
         ctx.save();
 
         if (ex.flashAlpha > 0) {
-          ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(0.6, ex.flashAlpha)})`;
+          ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(0.7, ex.flashAlpha)})`;
           ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
-        ctx.strokeStyle = ex.isPlayer ? `rgba(0, 255, 255, ${ex.alpha * 0.8})` : `rgba(255, 200, 100, ${ex.alpha * 0.8})`;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(ex.x, ex.y, ex.radius * 1.1, 0, Math.PI * 2);
-        ctx.stroke();
+        if (ex.isMushroom) {
+          // Paineaalto maata pitkin
+          ctx.strokeStyle = `rgba(255, 200, 100, ${ex.alpha * 0.7})`;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.ellipse(ex.x, ex.y, ex.radius * 1.2, ex.radius * 0.4, 0, 0, Math.PI * 2);
+          ctx.stroke();
 
-        const radGrad = ctx.createRadialGradient(ex.x, ex.y, 0, ex.x, ex.y, ex.radius);
-        radGrad.addColorStop(0, `rgba(255, 255, 255, ${ex.alpha})`);
-        radGrad.addColorStop(0.3, `rgba(255, 220, 0, ${ex.alpha * 0.9})`);
-        radGrad.addColorStop(0.7, `rgba(255, 50, 0, ${ex.alpha * 0.6})`);
-        radGrad.addColorStop(1, `rgba(50, 0, 0, 0)`);
+          // Tulipallo keskiössä
+          const radGrad = ctx.createRadialGradient(ex.x, ex.y, 0, ex.x, ex.y, ex.radius);
+          radGrad.addColorStop(0, `rgba(255, 255, 255, ${ex.alpha})`);
+          radGrad.addColorStop(0.2, `rgba(255, 220, 0, ${ex.alpha * 0.9})`);
+          radGrad.addColorStop(0.6, `rgba(255, 50, 0, ${ex.alpha * 0.6})`);
+          radGrad.addColorStop(1, `rgba(30, 0, 0, 0)`);
 
-        ctx.fillStyle = radGrad;
-        ctx.beginPath();
-        ctx.arc(ex.x, ex.y, ex.radius, 0, Math.PI * 2);
-        ctx.fill();
+          ctx.fillStyle = radGrad;
+          ctx.beginPath();
+          ctx.arc(ex.x, ex.y, ex.radius * 0.8, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // Tavallinen ABM-räjähdys
+          ctx.strokeStyle = `rgba(0, 255, 255, ${ex.alpha})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(ex.x, ex.y, ex.radius, 0, Math.PI * 2);
+          ctx.stroke();
+        }
 
         ctx.restore();
       });
@@ -377,6 +460,7 @@ export default function App() {
         startX: playerSiloPos.x, startY: playerSiloPos.y,
         targetX: clickX, targetY: clickY,
         currentX: playerSiloPos.x, currentY: playerSiloPos.y,
+        prevX: playerSiloPos.x, prevY: playerSiloPos.y,
         distance: Math.hypot(clickX - playerSiloPos.x, clickY - playerSiloPos.y),
         traveled: 0, speed: 220, isPlayer: true, active: true, isInterceptor: true, trail: []
       });
@@ -387,6 +471,7 @@ export default function App() {
         startX: playerSiloPos.x, startY: playerSiloPos.y,
         targetX: clickX, targetY: clickY,
         currentX: playerSiloPos.x, currentY: playerSiloPos.y,
+        prevX: playerSiloPos.x, prevY: playerSiloPos.y,
         distance: Math.hypot(clickX - playerSiloPos.x, clickY - playerSiloPos.y),
         traveled: 0, speed: 85, isPlayer: true, active: true, isInterceptor: false, trail: []
       });
@@ -425,7 +510,7 @@ export default function App() {
           <div>Kriisi: <strong style={{ color: crisisLevel > 70 ? '#ff3333' : 'yellow' }}>{crisisLevel}%</strong> | DEFCON: <strong style={{ color: defcon === 1 ? '#ff3333' : 'yellow' }}>{defcon}</strong></div>
         </div>
 
-        {/* Yläpalkki (Hover-tehosteilla) */}
+        {/* Yläpalkki */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', width: '950px', justifyContent: 'center' }}>
           {defcon > 1 ? (
               <>
@@ -490,7 +575,7 @@ export default function App() {
           <p style={{ color: '#ffcc00', fontWeight: 'bold' }}>{message}</p>
         </div>
 
-        {/* POPUP DIALOGI - Selkeillä Hover-korostuksilla vaihtoehdoissa */}
+        {/* POPUP DIALOGI */}
         {showDiplomacyModal && defcon > 1 && (
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(2, 5, 12, 0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
               <div style={{ width: '600px', backgroundColor: '#0b1626', border: '2px solid #00aaff', borderRadius: '8px', padding: '20px', boxShadow: '0 0 30px rgba(0, 170, 255, 0.3)' }}>
@@ -509,7 +594,6 @@ export default function App() {
                   "{currentQ.question}"
                 </p>
 
-                {/* Dialogivaihtoehdot interaktiivisilla hover-efekteillä */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '15px' }}>
                   {currentQ.options.map((opt, idx) => {
                     const btnKey = `option-${idx}`;
