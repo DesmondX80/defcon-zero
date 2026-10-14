@@ -25,7 +25,7 @@ interface ExplosionData {
   maxRadius: number;
   alpha: number;
   isPlayer: boolean;
-  flashAlpha: number; // Ydinräjähdyksen sokaiseva välähdys
+  flashAlpha: number;
 }
 
 interface Particle {
@@ -62,7 +62,10 @@ export default function App() {
   const [crisisLevel, setCrisisLevel] = useState<number>(35);
   const [showDiplomacyModal, setShowDiplomacyModal] = useState<boolean>(false);
   const [gameOver, setGameOver] = useState<boolean>(false);
-  const [message, setMessage] = useState<string>("KRIISIVAIHE: Tilanne on kiristynyt. Avaa neuvottelukosketus tai varustaudu.");
+  const [message, setMessage] = useState<string>("KRIISIVAIHE: Tilanne on kiristynyt. Avaa neuvotteluyhteys tai varustaudu.");
+
+  // Tilat hover-efekteille
+  const [hoveredButton, setHoveredButton] = useState<string | null>(null);
 
   const questionsList: DiplomacyQuestion[] = [
     {
@@ -168,7 +171,6 @@ export default function App() {
         }
       }
 
-      // Ohjusten päivitys (ballistinen kaari)
       missilesRef.current.forEach((m) => {
         if (!m.active) return;
         m.traveled += m.speed * dt;
@@ -183,7 +185,6 @@ export default function App() {
             explosionsRef.current.push({ id: Math.random(), x: m.targetX, y: m.targetY, radius: 5, maxRadius: 35, alpha: 1.0, isPlayer: true, flashAlpha: 0 });
             spawnParticles(m.targetX, m.targetY, 20, false);
           } else {
-            // Ydinräjähdys
             explosionsRef.current.push({ id: Math.random(), x: m.targetX, y: m.targetY, radius: 5, maxRadius: 65, alpha: 1.0, isPlayer: m.isPlayer, flashAlpha: 1.0 });
             spawnParticles(m.targetX, m.targetY, 60, true);
 
@@ -208,22 +209,19 @@ export default function App() {
             }
           }
         } else {
-          // Lasketaan kaareva linja (ICBM nousee ilmakehän yli)
           const linearX = m.startX + (m.targetX - m.startX) * t;
           const linearY = m.startY + (m.targetY - m.startY) * t;
-          const arcHeight = m.isInterceptor ? 30 : 120; // ICBM tekee korkean kaaren
+          const arcHeight = m.isInterceptor ? 30 : 120;
           const arcY = Math.sin(t * Math.PI) * arcHeight;
 
           m.currentX = linearX;
           m.currentY = linearY - arcY;
 
-          // Lisätään vana
           m.trail.push({ x: m.currentX, y: m.currentY, alpha: 1.0 });
           if (m.trail.length > 25) m.trail.shift();
         }
       });
 
-      // Hiukkaset
       particlesRef.current.forEach((p) => {
         p.x += p.vx * dt;
         p.y += p.vy * dt;
@@ -231,7 +229,6 @@ export default function App() {
       });
       particlesRef.current = particlesRef.current.filter((p) => p.life < p.maxLife);
 
-      // Torjunta ilmassa
       explosionsRef.current.forEach((ex) => {
         if (ex.isPlayer) {
           missilesRef.current.forEach((m) => {
@@ -251,11 +248,10 @@ export default function App() {
       explosionsRef.current.forEach((ex) => {
         if (ex.radius < ex.maxRadius) ex.radius += 60 * dt;
         else ex.alpha -= 0.4 * dt;
-        if (ex.flashAlpha > 0) ex.flashAlpha -= 2.5 * dt; // Välähdys vaimenee nopeasti
+        if (ex.flashAlpha > 0) ex.flashAlpha -= 2.5 * dt;
       });
       explosionsRef.current = explosionsRef.current.filter((ex) => ex.alpha > 0);
 
-      // --- PIIRTO ---
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       if (mapImageRef.current) {
@@ -266,7 +262,6 @@ export default function App() {
         ctx.fillStyle = '#03060a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
-      // Kohteet
       ctx.fillStyle = '#00ffff';
       ctx.fillRect(playerSiloPos.x - 8, playerSiloPos.y - 8, 16, 16);
       ctx.beginPath(); ctx.arc(playerCityPos.x, playerCityPos.y, 8, 0, Math.PI * 2); ctx.fill();
@@ -275,9 +270,7 @@ export default function App() {
       ctx.fillRect(enemySiloPos.x - 8, enemySiloPos.y - 8, 16, 16);
       ctx.beginPath(); ctx.arc(enemyCityPos.x, enemyCityPos.y, 8, 0, Math.PI * 2); ctx.fill();
 
-      // Ohjusten savu- ja valovanat
       missilesRef.current.forEach((m) => {
-        // Piirretään vana
         for (let i = 0; i < m.trail.length - 1; i++) {
           const pt1 = m.trail[i];
           const pt2 = m.trail[i + 1];
@@ -292,7 +285,6 @@ export default function App() {
           ctx.stroke();
         }
 
-        // Ohjuksen hehkuva kärkipiste
         ctx.shadowBlur = 10;
         ctx.shadowColor = m.isInterceptor ? '#00ffff' : m.isPlayer ? '#00aaff' : '#ff0000';
         ctx.fillStyle = '#ffffff';
@@ -302,7 +294,6 @@ export default function App() {
         ctx.shadowBlur = 0;
       });
 
-      // Hiukkaset (kipinät ja savu)
       particlesRef.current.forEach((p) => {
         const alpha = 1 - (p.life / p.maxLife);
         ctx.fillStyle = p.color;
@@ -313,24 +304,20 @@ export default function App() {
         ctx.globalAlpha = 1.0;
       });
 
-      // Realistiset ydinräjähdykset (monikerroksinen liukuväri)
       explosionsRef.current.forEach((ex) => {
         ctx.save();
 
-        // 1. Sokaiseva välähdys
         if (ex.flashAlpha > 0) {
           ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(0.6, ex.flashAlpha)})`;
           ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
-        // 2. Paineaalto (Shockwave)
         ctx.strokeStyle = ex.isPlayer ? `rgba(0, 255, 255, ${ex.alpha * 0.8})` : `rgba(255, 200, 100, ${ex.alpha * 0.8})`;
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.arc(ex.x, ex.y, ex.radius * 1.1, 0, Math.PI * 2);
         ctx.stroke();
 
-        // 3. Ydintulipallo (Radial Gradient)
         const radGrad = ctx.createRadialGradient(ex.x, ex.y, 0, ex.x, ex.y, ex.radius);
         radGrad.addColorStop(0, `rgba(255, 255, 255, ${ex.alpha})`);
         radGrad.addColorStop(0.3, `rgba(255, 220, 0, ${ex.alpha * 0.9})`);
@@ -438,15 +425,50 @@ export default function App() {
           <div>Kriisi: <strong style={{ color: crisisLevel > 70 ? '#ff3333' : 'yellow' }}>{crisisLevel}%</strong> | DEFCON: <strong style={{ color: defcon === 1 ? '#ff3333' : 'yellow' }}>{defcon}</strong></div>
         </div>
 
-        {/* Yläpalkki */}
+        {/* Yläpalkki (Hover-tehosteilla) */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', width: '950px', justifyContent: 'center' }}>
           {defcon > 1 ? (
               <>
-                <button onClick={() => setShowDiplomacyModal(true)} style={{...btnStyle, borderColor: '#00aaff', color: '#00aaff', fontWeight: 'bold'}}>
+                <button
+                    onClick={() => setShowDiplomacyModal(true)}
+                    onMouseEnter={() => setHoveredButton('diplomacy')}
+                    onMouseLeave={() => setHoveredButton(null)}
+                    style={{
+                      ...btnStyle,
+                      borderColor: '#00aaff',
+                      color: '#00aaff',
+                      fontWeight: 'bold',
+                      backgroundColor: hoveredButton === 'diplomacy' ? '#003366' : '#05080f',
+                      boxShadow: hoveredButton === 'diplomacy' ? '0 0 12px rgba(0, 170, 255, 0.5)' : 'none',
+                      transform: hoveredButton === 'diplomacy' ? 'translateY(-1px)' : 'none'
+                    }}
+                >
                   🤝 NEUVOTTELE RAUHASTA
                 </button>
-                <button onClick={buildSilo} style={btnStyle}>Rakenna Siilo (30 pt)</button>
-                <button onClick={buildABM} style={btnStyle}>Osta ABM (15 pt)</button>
+                <button
+                    onClick={buildSilo}
+                    onMouseEnter={() => setHoveredButton('silo')}
+                    onMouseLeave={() => setHoveredButton(null)}
+                    style={{
+                      ...btnStyle,
+                      backgroundColor: hoveredButton === 'silo' ? '#142842' : '#05080f',
+                      boxShadow: hoveredButton === 'silo' ? '0 0 10px rgba(0, 255, 204, 0.4)' : 'none'
+                    }}
+                >
+                  Rakenna Siilo (30 pt)
+                </button>
+                <button
+                    onClick={buildABM}
+                    onMouseEnter={() => setHoveredButton('abm')}
+                    onMouseLeave={() => setHoveredButton(null)}
+                    style={{
+                      ...btnStyle,
+                      backgroundColor: hoveredButton === 'abm' ? '#142842' : '#05080f',
+                      boxShadow: hoveredButton === 'abm' ? '0 0 10px rgba(0, 255, 204, 0.4)' : 'none'
+                    }}
+                >
+                  Osta ABM (15 pt)
+                </button>
               </>
           ) : (
               <div style={{ fontSize: '13px', color: '#ff3333', fontWeight: 'bold' }}>
@@ -468,7 +490,7 @@ export default function App() {
           <p style={{ color: '#ffcc00', fontWeight: 'bold' }}>{message}</p>
         </div>
 
-        {/* POPUP DALOGI */}
+        {/* POPUP DIALOGI - Selkeillä Hover-korostuksilla vaihtoehdoissa */}
         {showDiplomacyModal && defcon > 1 && (
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(2, 5, 12, 0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
               <div style={{ width: '600px', backgroundColor: '#0b1626', border: '2px solid #00aaff', borderRadius: '8px', padding: '20px', boxShadow: '0 0 30px rgba(0, 170, 255, 0.3)' }}>
@@ -487,15 +509,46 @@ export default function App() {
                   "{currentQ.question}"
                 </p>
 
+                {/* Dialogivaihtoehdot interaktiivisilla hover-efekteillä */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '15px' }}>
-                  {currentQ.options.map((opt, idx) => (
-                      <button key={idx} onClick={() => handleAnswer(opt.crisisEffect, opt.resourceEffect, opt.reply)} style={optionBtnStyle}>
-                        › {opt.text}
-                      </button>
-                  ))}
+                  {currentQ.options.map((opt, idx) => {
+                    const btnKey = `option-${idx}`;
+                    const isHovered = hoveredButton === btnKey;
+                    return (
+                        <button
+                            key={idx}
+                            onClick={() => handleAnswer(opt.crisisEffect, opt.resourceEffect, opt.reply)}
+                            onMouseEnter={() => setHoveredButton(btnKey)}
+                            onMouseLeave={() => setHoveredButton(null)}
+                            style={{
+                              ...optionBtnStyle,
+                              backgroundColor: isHovered ? '#142f4c' : '#05080f',
+                              borderColor: isHovered ? '#00ffcc' : '#1a3a5c',
+                              color: isHovered ? '#ffffff' : '#00ffcc',
+                              boxShadow: isHovered ? '0 0 10px rgba(0, 255, 204, 0.3)' : 'none',
+                              transform: isHovered ? 'translateX(4px)' : 'none',
+                              transition: 'all 0.15s ease'
+                            }}
+                        >
+                          › {opt.text}
+                        </button>
+                    );
+                  })}
                 </div>
 
-                <button onClick={() => setShowDiplomacyModal(false)} style={{ ...btnStyle, borderColor: '#888', color: '#888', width: '100%' }}>
+                <button
+                    onClick={() => setShowDiplomacyModal(false)}
+                    onMouseEnter={() => setHoveredButton('close')}
+                    onMouseLeave={() => setHoveredButton(null)}
+                    style={{
+                      ...btnStyle,
+                      borderColor: hoveredButton === 'close' ? '#aaaaaa' : '#666666',
+                      color: hoveredButton === 'close' ? '#ffffff' : '#888888',
+                      backgroundColor: hoveredButton === 'close' ? '#222222' : '#05080f',
+                      width: '100%',
+                      transition: 'all 0.15s ease'
+                    }}
+                >
                   Sulje neuvottelut toistaiseksi
                 </button>
 
@@ -515,14 +568,15 @@ const btnStyle: React.CSSProperties = {
   fontFamily: 'Courier New, monospace',
   cursor: 'pointer',
   fontSize: '12px',
-  borderRadius: '4px'
+  borderRadius: '4px',
+  transition: 'all 0.15s ease'
 };
 
 const optionBtnStyle: React.CSSProperties = {
   backgroundColor: '#05080f',
   color: '#00ffcc',
   border: '1px solid #1a3a5c',
-  padding: '8px 12px',
+  padding: '10px 12px',
   fontFamily: 'Courier New, monospace',
   cursor: 'pointer',
   fontSize: '12px',
