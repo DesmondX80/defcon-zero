@@ -61,7 +61,6 @@ export default function App() {
       if (gameOver) return;
       setResources((prev) => Math.min(100, prev + 4));
 
-      // Jos ollaan vielä kriisivaiheessa (defcon > 1), kriisi etenee hitaasti kohti sodan syttymistä
       if (defcon > 1) {
         setCrisisLevel((prev) => {
           const next = prev + 3;
@@ -241,7 +240,6 @@ export default function App() {
     }
   };
 
-  // Diplomaattiset toimet kriisivaiheessa
   const negotiatePeace = () => {
     if (defcon === 1) {
       setMessage("Sota on jo käynnissä! Diplomatia ei auta enää.");
@@ -270,7 +268,7 @@ export default function App() {
     if (resources >= 30) {
       setResources((r) => r - 30);
       setPlayerSilos((s) => s + 1);
-      setMessage("Uusi ohjussiilo rakennettaan puolustusta varten.");
+      setMessage("Uusi ohjussiilo rakennettu puolustusta varten.");
     } else { setMessage("Ei tarpeeksi resursseja siilon rakennukseen (vaatii 30 pt)."); }
   };
 
@@ -293,7 +291,8 @@ export default function App() {
         <div style={{ display: 'flex', justifyContent: 'space-between', width: '950px', marginBottom: '8px', fontSize: '13px', borderBottom: '1px solid #1a3a5c', paddingBottom: '6px' }}>
           <div>Pelaajan Kunto: <strong style={{ color: '#00ffff' }}>{playerHP}%</strong> | Siilot: <strong>{playerSilos}</strong> | ABM: <strong>{playerABM}</strong></div>
           <div>Resurssit: <strong style={{ color: '#ffcc00' }}>{resources} pt</strong></div>
-          <div>Kriisitaso: <strong style={{ color: crisisLevel > 70 ? '#ff3333' : 'yellow' }}>{crisisLevel}%</strong> | DEFCON: <strong style={{ color: defcon === 1 ? '#ff3333' : 'yellow' }}>{defcon}</strong></div>
+          <div>Vihollisen Kunto: <strong style={{ color: '#ff3333' }}>{enemyHP}%</strong></div>
+          <div>Kriisi: <strong style={{ color: crisisLevel > 70 ? '#ff3333' : 'yellow' }}>{crisisLevel}%</strong> | DEFCON: <strong style={{ color: defcon === 1 ? '#ff3333' : 'yellow' }}>{defcon}</strong></div>
         </div>
 
         {/* Toimintapaneelit */}
