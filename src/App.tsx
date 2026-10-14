@@ -58,6 +58,7 @@ interface DiplomacyQuestion {
     text: string;
     crisisEffect: number;
     resourceEffect: number;
+    approvalEffect: number;
     reply: string;
   }[];
 }
@@ -69,15 +70,20 @@ export default function App() {
   const [techLevel, setTechLevel] = useState<number>(1);
   const [enemyTechLevel, setEnemyTechLevel] = useState<number>(1);
 
+  // Presidentin hallinnon resurssit ja vaalikannatus
+  const [approvalRating, setApprovalRating] = useState<number>(50); // %
+  const [bombers, setBombers] = useState<number>(2); // Pommittajalaivueet
+  const [submarines, setSubmarines] = useState<number>(1); // Ydinsukellusveneet
+
   // Tarkat maantieteelliset koordinaatit maailmankartalle (950x420)
-  const playerSiloPos = { x: 260, y: 165 }; // Keski-USA (silo)
+  const playerSiloPos = { x: 260, y: 165 };
   const [playerCities, setPlayerCities] = useState<City[]>([
     { id: 'pc1', name: 'Washington', x: 305, y: 175, hp: 100, alive: true },
     { id: 'pc2', name: 'New York', x: 315, y: 155, hp: 100, alive: true },
     { id: 'pc3', name: 'Los Angeles', x: 190, y: 190, hp: 100, alive: true }
   ]);
 
-  const enemySiloPos = { x: 720, y: 130 }; // Siperia / Venäjä (silo)
+  const enemySiloPos = { x: 720, y: 130 };
   const [enemyCities, setEnemyCities] = useState<City[]>([
     { id: 'ec1', name: 'Moskova', x: 620, y: 145, hp: 100, alive: true },
     { id: 'ec2', name: 'Pietari', x: 595, y: 125, hp: 100, alive: true },
@@ -85,30 +91,49 @@ export default function App() {
   ]);
 
   const [playerABM, setPlayerABM] = useState<number>(5);
-  const [resources, setResources] = useState<number>(20);
+  const [resources, setResources] = useState<number>(25);
 
   const [defcon, setDefcon] = useState<number>(3);
   const [crisisLevel, setCrisisLevel] = useState<number>(20);
-  const [showDiplomacyModal, setShowDiplomacyModal] = useState<boolean>(false);
+  const [showDiplomacyModal, setShowDiplomacyModal] = useState<boolean>(true); // Avautuu heti pelin alussa vaalivalinnalla
   const [gameOver, setGameOver] = useState<boolean>(false);
-  const [message, setMessage] = useState<string>("VUOSI 1946: Toinen maailmansota on päättynyt. Kylmä sota ja varustelukilpailu ovat alkaneet.");
+  const [message, setMessage] = useState<string>("HERRA PRESIDENTTI: Astuit juuri virkaasi. Kylmä sota on alkanut, ja kansakunta odottaa linjauksianne.");
 
   const questionsList: DiplomacyQuestion[] = [
     {
-      title: "BERLIININ SAARTO // DIPLOMATIA",
-      question: "Vihollinen sulkee maayhteydet sektoriimme. Miten reagoimme kriisiin?",
+      title: "VIRKAASTUMINEN // STRATEGINEN DOKTRIINI",
+      question: "Herra presidentti, teille on esitetty ensimmäinen turvallisuuspoliittinen linjaus. Mihin asehaarajuoni budjetti keskitetään?",
       options: [
-        { text: "Järjestetään massiivinen ilmasilta ja vältetään yhteenotto.", crisisEffect: -15, resourceEffect: -10, reply: "Ilmasilta onnistui! Jännitteet laskivat väliaikaisesti." },
-        { text: "Vaaditaan reitin avaamista asevoimin uhaten.", crisisEffect: +30, resourceEffect: +10, reply: "Uhkaava kanta nosti kriisiprosenttia rajusti!" },
-        { text: "Vetäydytään hiljaisesti kiistellyltä alueelta.", crisisEffect: -25, resourceEffect: -5, reply: "Peräännyitte neuvottelupöydässä." }
+        {
+          text: "A) Pommittajalaivueiden massiivinen laajennus (Kriisi +20%, Vaalikannatus +12%)",
+          crisisEffect: 20,
+          resourceEffect: -10,
+          approvalEffect: 12,
+          reply: "Pommittajaohjelma sai kansoilta suuren suosion, mutta vihollinen tulkitsee sen provokaatioksi!"
+        },
+        {
+          text: "B) Sukellusveneohjelman kiihdyttäminen merillä (Kriisi stabiili, Vaalikannatus +5%)",
+          crisisEffect: 0,
+          resourceEffect: -10,
+          approvalEffect: 5,
+          reply: "Ydinsukellusveneet upotetaan syvyyksiin turvaamaan vastaiskukykyä."
+        },
+        {
+          text: "C) Puolustuksellinen linja: Tutkaverkot ja ABM-torjunta (Kriisi -10%, Vaalikannatus +15%)",
+          crisisEffect: -10,
+          resourceEffect: -5,
+          approvalEffect: 15,
+          reply: "Kansa ilahtui rauhanomaisemmasta puolustuslinjasta. Jännitteet laskivat."
+        }
       ]
     },
     {
-      title: "YDINASETESTI // TIEDE",
-      question: "Tiedemiehemme vaativat lisärahoitusta ensimmäiselle vetypommitestille.",
+      title: "BERLIININ SAARTO // ULKOPOLITIIKKA",
+      question: "Vihollinen sulkee maayhteydet sektoriimme. Miten reagoimme kriisiin?",
       options: [
-        { text: "Myönnetään varat ja kiihdytetään ohjastutkimusta.", crisisEffect: +20, resourceEffect: -20, reply: "Teknologiataso nousi! Vihollinen reagoi omalla varustelullaan." },
-        { text: "Hylätään hanke ja panostetaan tavanomaiseen puolustukseen.", crisisEffect: -10, resourceEffect: +10, reply: "Säästitte resursseja, mutta teknologia laahaa." }
+        { text: "Järjestetään massiivinen ilmasilta ja vältetään yhteenotto.", crisisEffect: -15, resourceEffect: -10, approvalEffect: 8, reply: "Ilmasilta onnistui loistavasti! Kannatus nousi." },
+        { text: "Vaaditaan reitin avaamista asevoimin uhaten.", crisisEffect: +30, resourceEffect: +10, approvalEffect: -5, reply: "Uhkaava kanta nosti kriisiprosenttia rajusti!" },
+        { text: "Vetäydytään hiljaisesti kiistellyltä alueelta.", crisisEffect: -25, resourceEffect: -5, approvalEffect: -15, reply: "Peräännyitte neuvottelupöydässä, mikä laski kansan luottamusta hallitukseen." }
       ]
     }
   ];
@@ -127,9 +152,10 @@ export default function App() {
     img.onload = () => { mapImageRef.current = img; };
   }, []);
 
+  // Vuosien ja talouden kuluminen
   useEffect(() => {
     const interval = setInterval(() => {
-      if (gameOver) return;
+      if (gameOver || showDiplomacyModal) return;
 
       setYear((prevYear) => {
         const nextYear = prevYear + 1;
@@ -139,7 +165,7 @@ export default function App() {
             const nextC = c + 15;
             if (nextC >= 100) {
               setDefcon(1);
-              setMessage("HÄLYTYS: Vuosi on " + nextYear + "! Kylmä sota on kärjistynyt DEFCON 1 -sodaksi!");
+              setMessage("HÄLYTYS: Vuosi on " + nextYear + "! Tilanne on kärjistynyt DEFCON 1 -ydinsodaksi!");
               return 100;
             }
             return nextC;
@@ -152,7 +178,7 @@ export default function App() {
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [gameOver, defcon]);
+  }, [gameOver, defcon, showDiplomacyModal]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -214,7 +240,7 @@ export default function App() {
       lastTime = time;
       if (dt > 0.1) dt = 0.1;
 
-      if (!gameOver && defcon === 1) {
+      if (!gameOver && defcon === 1 && !showDiplomacyModal) {
         aiTimer += dt;
         if (aiTimer > 7.0) {
           aiTimer = 0;
@@ -238,7 +264,7 @@ export default function App() {
             isInterceptor: false,
             trail: []
           });
-          setMessage("HÄLYTYS: Vihollinen on laukaissut strategisen ohjuksen!");
+          setMessage("HÄLYTYS: Vihollinen on laukaissut ohjuksen kohteeseen!");
         }
       }
 
@@ -266,7 +292,7 @@ export default function App() {
               setEnemyCities(prev => prev.map(city => {
                 if (city.alive && Math.hypot(m.targetX - city.x, m.targetY - city.y) < 40) {
                   const nextHp = city.hp - 100;
-                  if (nextHp <= 0) setMessage(`VIHOLLISKAUPUNKI TUHOUTUI: ${city.name} on tuhottu!`);
+                  if (nextHp <= 0) setMessage(`VIHOLLISKAUPUNKI TUHOUTUI: ${city.name} tuhoutui iskuvastauksessa!`);
                   return { ...city, hp: nextHp, alive: nextHp > 0 };
                 }
                 return city;
@@ -275,7 +301,7 @@ export default function App() {
               setPlayerCities(prev => prev.map(city => {
                 if (city.alive && Math.hypot(m.targetX - city.x, m.targetY - city.y) < 40) {
                   const nextHp = city.hp - 100;
-                  if (nextHp <= 0) setMessage(`HÄLYTYS: Kotikaupunki ${city.name} on tuhoutunut!`);
+                  if (nextHp <= 0) setMessage(`HÄLYTYS: Kotikaupunki ${city.name} on tuhoutunut ydiniskussa!`);
                   return { ...city, hp: nextHp, alive: nextHp > 0 };
                 }
                 return city;
@@ -342,12 +368,10 @@ export default function App() {
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Kartan renderöinti parannetulla kontrastilla
       if (mapImageRef.current) {
         ctx.save();
         ctx.globalAlpha = 0.65;
         ctx.drawImage(mapImageRef.current, 0, 0, canvas.width, canvas.height);
-        // Tummennuskerros taustalle jotta kartta erottuu siististi kyberteemassa
         ctx.fillStyle = 'rgba(2, 6, 15, 0.4)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.restore();
@@ -355,12 +379,11 @@ export default function App() {
         ctx.fillStyle = '#03060a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
-      // Oma siilo
       ctx.fillStyle = '#00ffff';
       ctx.fillRect(playerSiloPos.x - 7, playerSiloPos.y - 7, 14, 14);
       ctx.font = '10px Courier New';
       ctx.fillStyle = '#00ffff';
-      ctx.fillText(`OMA SIILO (Taso ${techLevel})`, playerSiloPos.x - 35, playerSiloPos.y - 10);
+      ctx.fillText(`PÄÄMAJA / SIILO (Taso ${techLevel})`, playerSiloPos.x - 45, playerSiloPos.y - 10);
 
       playerCities.forEach(city => {
         ctx.fillStyle = city.alive ? '#00ffff' : '#555555';
@@ -370,7 +393,6 @@ export default function App() {
         ctx.fillText(city.name, city.x - 15, city.y - 8);
       });
 
-      // Vihollisen siilo
       ctx.fillStyle = '#ff3333';
       ctx.fillRect(enemySiloPos.x - 7, enemySiloPos.y - 7, 14, 14);
       ctx.font = '10px Courier New';
@@ -480,11 +502,12 @@ export default function App() {
 
     animationFrameId = requestAnimationFrame(gameLoop);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [gameOver, defcon, playerCities, enemyCities, enemyTechLevel]);
+  }, [gameOver, defcon, playerCities, enemyCities, enemyTechLevel, showDiplomacyModal]);
 
-  const handleAnswer = (crisisEffect: number, resourceEffect: number, reply: string) => {
+  const handleAnswer = (crisisEffect: number, resourceEffect: number, approvalEffect: number, reply: string) => {
     setMessage(reply);
     setResources((prev) => Math.max(0, prev + resourceEffect));
+    setApprovalRating((prev) => Math.max(0, Math.min(100, prev + approvalEffect)));
     setShowDiplomacyModal(false);
 
     setCrisisLevel((prev) => {
@@ -493,8 +516,6 @@ export default function App() {
         setDefcon(1);
         setMessage("HÄLYTYS: Vuosi " + year + " - Kylmä sota on kärjistynyt täysimittaiseksi ydinsodaksi!");
         return 100;
-      } else if (nextCrisis <= 0) {
-        setMessage("Rauhansopimus solmittu! Kriisi laantui hetkellisesti.");
       }
       return nextCrisis;
     });
@@ -503,9 +524,9 @@ export default function App() {
   };
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (gameOver) return;
+    if (gameOver || showDiplomacyModal) return;
     if (defcon > 1) {
-      setMessage("Rauhan aika (vuosi " + year + "). Kehitä teknologiaa tai käytä neuvotteluja ennen sotaa.");
+      setMessage("Virka-aika (vuosi " + year + "). Hallitse arsenaalia, kehitä kalustoa ja tarkkaile vaalikannatusta.");
       return;
     }
 
@@ -535,7 +556,7 @@ export default function App() {
         distance: Math.hypot(clickX - playerSiloPos.x, clickY - playerSiloPos.y),
         traveled: 0, speed: 75 + (techLevel * 20), isPlayer: true, active: true, isInterceptor: false, trail: []
       });
-      setMessage("Strateginen ICBM laukaistu kohteeseen.");
+      setMessage("Strateginen isku laukaistu kohteeseen.");
     }
   };
 
@@ -543,7 +564,8 @@ export default function App() {
     if (techLevel < 3 && resources >= 40) {
       setResources((r) => r - 40);
       setTechLevel((t) => t + 1);
-      setMessage(`Teknologia päivitetty (Taso ${techLevel + 1}): Ohjusten kantama ja nopeus kasvoivat!`);
+      setApprovalRating((a) => Math.min(100, a + 5));
+      setMessage(`Teknologia päivitetty (Taso ${techLevel + 1}): Kansan tuki kasvoi onnistuneen ohjelman myötä!`);
     } else if (techLevel >= 3) {
       setMessage("Mannerjälkeinen ICBM-teknologia on jo huipussaan.");
     } else {
@@ -551,32 +573,43 @@ export default function App() {
     }
   };
 
-  const buildABM = () => {
-    if (resources >= 15) {
-      setResources((r) => r - 15);
-      setPlayerABM((a) => a + 4);
-      setMessage("Puolustusta täydennetty (+4 ABM-ohjusta).");
-    } else { setMessage("Ei tarpeeksi resursseja (vaatii 15 pt)."); }
+  const buildBomber = () => {
+    if (resources >= 30) {
+      setResources((r) => r - 30);
+      setBombers((b) => b + 1);
+      setApprovalRating((a) => Math.min(100, a + 4));
+      setMessage("Uusi strateginen pommittajalaivue tilattu ilmavoimille.");
+    } else { setMessage("Ei tarpeeksi resursseja (vaatii 30 pt)."); }
+  };
+
+  const buildSubmarine = () => {
+    if (resources >= 35) {
+      setResources((r) => r - 35);
+      setSubmarines((s) => s + 1);
+      setApprovalRating((a) => Math.min(100, a + 3));
+      setMessage("Uusi ydinsukellusvene laskettu vesille.");
+    } else { setMessage("Ei tarpeeksi resursseja (vaatii 35 pt)."); }
   };
 
   const playerAliveCount = playerCities.filter(c => c.alive).length;
-  const enemyAliveCountDisp = enemyCities.filter(c => c.alive).length;
 
   return (
       <div style={{ backgroundColor: '#05080f', color: '#00ffcc', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'Courier New, monospace', margin: 0, padding: '20px', position: 'relative' }}>
 
         <h1 style={{ fontSize: '20px', letterSpacing: '3px', marginBottom: '8px', textShadow: '0 0 10px rgba(0,255,204,0.4)' }}>
-          DEFCON ZERO // KYLMÄ SOTA JA VARUSTELU
+          PRESIDENTIN STRATEGINEN ESIKUNTA // KYLMÄ SOTA
         </h1>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', width: '950px', marginBottom: '8px', fontSize: '13px', borderBottom: '1px solid #1a3a5c', paddingBottom: '6px' }}>
-          <div>Vuosi: <strong style={{ color: '#00ffff' }}>{year}</strong> | Teko-taso: <strong>{techLevel}/3</strong></div>
+        {/* HUD - Mukana vuosi, resurssit, arsenaali ja vaalikannatus */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', width: '950px', marginBottom: '8px', fontSize: '12px', borderBottom: '1px solid #1a3a5c', paddingBottom: '6px' }}>
+          <div>Vuosi: <strong style={{ color: '#00ffff' }}>{year}</strong> | Kannatus: <strong style={{ color: approvalRating > 40 ? '#00ffcc' : '#ff3333' }}>{approvalRating}%</strong></div>
+          <div>Pommittajat: <strong>{bombers}</strong> | Sukellusveneet: <strong>{submarines}</strong></div>
           <div>Resurssit: <strong style={{ color: '#ffcc00' }}>{resources} pt</strong></div>
           <div>Kriisi: <strong style={{ color: crisisLevel > 70 ? '#ff3333' : 'yellow' }}>{crisisLevel}%</strong> | DEFCON: <strong style={{ color: defcon === 1 ? '#ff3333' : 'yellow' }}>{defcon}</strong></div>
-          <div>Vihollisen taso: <strong style={{ color: '#ff3333' }}>{enemyTechLevel}/3</strong> ({enemyAliveCountDisp} kaupunkia)</div>
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', width: '950px', justifyContent: 'center' }}>
+        {/* Hallintapainikkeet */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', width: '950px', justifyContent: 'center', flexWrap: 'wrap' }}>
           {!gameOver ? (
               <>
                 {defcon > 1 && (
@@ -584,25 +617,31 @@ export default function App() {
                         onClick={() => setShowDiplomacyModal(true)}
                         style={{ ...btnStyle, borderColor: '#00aaff', color: '#00aaff', fontWeight: 'bold' }}
                     >
-                      🤝 NEUVOTTELE / KRIISI
+                      📜 Valtioneuvoston istunto
                     </button>
                 )}
                 <button
                     onClick={upgradeTech}
                     style={{ ...btnStyle, borderColor: '#ffcc00', color: '#ffcc00' }}
                 >
-                  🚀 Kehitä ICBM-teknologiaa (40 pt)
+                  🚀 Kehitä ICBM (40 pt)
                 </button>
                 <button
-                    onClick={buildABM}
+                    onClick={buildBomber}
                     style={btnStyle}
                 >
-                  🛡 Osta ABM (15 pt)
+                  ✈ Rakenna Pommittaja (30 pt)
+                </button>
+                <button
+                    onClick={buildSubmarine}
+                    style={btnStyle}
+                >
+                  ⚓ Rakenna Sukellusvene (35 pt)
                 </button>
               </>
           ) : (
               <div style={{ fontSize: '15px', color: '#00ffff', fontWeight: 'bold' }}>
-                {playerAliveCount > 0 ? 'VOITTO! Kylmä sota voitettu tai vihollinen tuhottu.' : 'TAPPIO: Valtiosi on tuhottu.'}
+                {playerAliveCount > 0 ? 'KAUNIIT ONNITTELUT! Presidenttikausi päättyi voitokkaasti.' : 'HALLINTONNE KAATUI: Valtio tuhoutui ydinsodassa.'}
               </div>
           )}
         </div>
@@ -615,33 +654,34 @@ export default function App() {
             style={{ border: '2px solid #1a3a5c', boxShadow: '0 0 25px rgba(0, 255, 204, 0.15)', cursor: defcon === 1 && !gameOver ? 'crosshair' : 'default', background: '#020408' }}
         />
 
-        <div style={{ marginTop: '12px', fontSize: '16px', color: '#ffcc00', textAlign: 'center', maxWidth: '950px', background: '#081220', border: '1px solid #1a3a5c', padding: '10px 16px', borderRadius: '4px', letterSpacing: '1px', textShadow: '0 0 8px rgba(255, 204, 0, 0.3)' }}>
+        <div style={{ marginTop: '12px', fontSize: '15px', color: '#ffcc00', textAlign: 'center', maxWidth: '950px', background: '#081220', border: '1px solid #1a3a5c', padding: '10px 16px', borderRadius: '4px', letterSpacing: '1px', textShadow: '0 0 8px rgba(255, 204, 0, 0.3)' }}>
           <p style={{ margin: 0, fontWeight: 'bold' }}>{message}</p>
         </div>
 
-        {showDiplomacyModal && defcon > 1 && !gameOver && (
-            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(2, 5, 12, 0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-              <div style={{ width: '600px', backgroundColor: '#0b1626', border: '2px solid #00aaff', borderRadius: '8px', padding: '20px', boxShadow: '0 0 30px rgba(0, 170, 255, 0.3)' }}>
+        {/* PRESIDENTIN VALINTA / DIPLOMATIAMODAALI */}
+        {showDiplomacyModal && !gameOver && (
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(2, 5, 12, 0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+              <div style={{ width: '640px', backgroundColor: '#0b1626', border: '2px solid #00aaff', borderRadius: '8px', padding: '24px', boxShadow: '0 0 35px rgba(0, 170, 255, 0.35)' }}>
 
                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '15px' }}>
-                  <div style={{ width: '70px', height: '70px', border: '2px solid #ff3333', borderRadius: '6px', backgroundColor: '#1a0505', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '32px' }}>
-                    🗿
+                  <div style={{ width: '70px', height: '70px', border: '2px solid #00aaff', borderRadius: '6px', backgroundColor: '#05101a', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '32px' }}>
+                    🏛
                   </div>
                   <div>
-                    <div style={{ fontSize: '12px', color: '#00aaff', fontWeight: 'bold' }}>{currentQ.title}</div>
-                    <div style={{ fontSize: '14px', color: '#ff3333', fontWeight: 'bold' }}>Neuvottelija</div>
+                    <div style={{ fontSize: '13px', color: '#00aaff', fontWeight: 'bold' }}>{currentQ.title}</div>
+                    <div style={{ fontSize: '15px', color: '#ffffff', fontWeight: 'bold' }}>Vaalikausi ja päätöksenteko</div>
                   </div>
                 </div>
 
-                <p style={{ fontSize: '14px', color: '#ffffff', fontStyle: 'italic', marginBottom: '15px', background: '#05080f', padding: '12px', borderRadius: '4px', borderLeft: '3px solid #ff3333' }}>
+                <p style={{ fontSize: '14px', color: '#e0f7ff', fontStyle: 'italic', marginBottom: '20px', background: '#05080f', padding: '14px', borderRadius: '4px', borderLeft: '3px solid #00aaff', lineHeight: '1.4' }}>
                   "{currentQ.question}"
                 </p>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '15px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '15px' }}>
                   {currentQ.options.map((opt, idx) => (
                       <button
                           key={idx}
-                          onClick={() => handleAnswer(opt.crisisEffect, opt.resourceEffect, opt.reply)}
+                          onClick={() => handleAnswer(opt.crisisEffect, opt.resourceEffect, opt.approvalEffect, opt.reply)}
                           style={optionBtnStyle}
                       >
                         › {opt.text}
@@ -651,9 +691,9 @@ export default function App() {
 
                 <button
                     onClick={() => setShowDiplomacyModal(false)}
-                    style={{ ...btnStyle, borderColor: '#888', color: '#888', width: '100%' }}
+                    style={{ ...btnStyle, borderColor: '#666', color: '#888', width: '100%', marginTop: '5px' }}
                 >
-                  Sulje ikkuna
+                  Palaa kartalle (Lykkää päätöstä)
                 </button>
 
               </div>
@@ -679,7 +719,7 @@ const optionBtnStyle: React.CSSProperties = {
   backgroundColor: '#05080f',
   color: '#00ffcc',
   border: '1px solid #1a3a5c',
-  padding: '10px 12px',
+  padding: '12px 14px',
   fontFamily: 'Courier New, monospace',
   cursor: 'pointer',
   fontSize: '13px',
