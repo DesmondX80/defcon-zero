@@ -1,14 +1,3 @@
-TypeScriptin kääntäjä huomasi muutaman pienen muuttujanimivirheen.
-
-    Virheet johtuvat kahdesta asiasta:
-
-    playerSubs-muuttuja oli määritelty, mutta sitä ei käytetty vielä missään.
-
-    Rivillä 124 luki playerSilo.y, kun muuttujan nimi oli ylempänä playerSiloPos.y.
-
-    Tässä on korjattu ja puhtoisesti kääntyvä src/App.tsx-tiedosto. Korvaa src/App.tsx tällä sisällöllä:
-
-    TypeScript
 import React, { useEffect, useRef, useState } from 'react';
 
 interface MissileData {
