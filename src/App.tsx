@@ -1,4 +1,20 @@
+Tämä muuttaa pelin strategista syvyyttä loistavasti! Pelistä tulee paljon taktisempi, kun siilojen lisäksi kartalla on useita nimettyjä suurkaupunkeja, jotka muodostavat valtion väestö- ja teollisuuskeskukset. Kun kaupungit tuhotaan ydiniskuilla, osapuoli menettää pisteensä ja häviää sodan.
+
+    Valitaan peliin molemmille osapuolille omat nimetyt suurkaupungit (esimerkiksi Cold War -henkiset tai suomalaiset/kansainväliset solmukohdat).
+
+Päivitetään src/App.tsx-tiedostoon kaupunkijärjestelmä ja kaupunkien tuhoaminen:
+
+    TypeScript
 import React, { useEffect, useRef, useState } from 'react';
+
+interface City {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  hp: number; // Esim. 100%
+  alive: boolean;
+}
 
 interface MissileData {
   id: number;
@@ -56,9 +72,20 @@ interface DiplomacyQuestion {
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const [playerHP, setPlayerHP] = useState<number>(100);
-  const [enemyHP, setEnemyHP] = useState<number>(100);
-  const [playerABM, setPlayerABM] = useState<number>(10);
+  // Pelaajan ja vihollisen kaupungit
+  const [playerCities, setPlayerCities] = useState<City[]>([
+    { id: 'pc1', name: 'Helsinki', x: 175, y: 290, hp: 100, alive: true },
+    { id: 'pc2', name: 'Tampere', x: 160, y: 240, hp: 100, alive: true },
+    { id: 'pc3', name: 'Oulu', x: 210, y: 180, hp: 100, alive: true }
+  ]);
+
+  const [enemyCities, setEnemyCities] = useState<City[]>([
+    { id: 'ec1', name: 'Moskova', x: 750, y: 190, hp: 100, alive: true },
+    { id: 'ec2', name: 'Pietari', x: 700, y: 150, hp: 100, alive: true },
+    { id: 'ec3', name: 'Novosibirsk', x: 840, y: 220, hp: 100, alive: true }
+  ]);
+
+  const [playerABM, setPlayerABM] = useState<number>(12);
   const [playerSilos, setPlayerSilos] = useState<number>(3);
   const [resources, setResources] = useState<number>(40);
 
@@ -66,7 +93,7 @@ export default function App() {
   const [crisisLevel, setCrisisLevel] = useState<number>(35);
   const [showDiplomacyModal, setShowDiplomacyModal] = useState<boolean>(false);
   const [gameOver, setGameOver] = useState<boolean>(false);
-  const [message, setMessage] = useState<string>("KRIISIVAIHE: Tilanne on kiristynyt. Avaa neuvotteluyhteys tai varustaudu.");
+  const [message, setMessage] = useState<string>("KRIISIVAIHE: Tilanne on kiristynyt. Puolusta kaupunkejasi tai neuvottele.");
 
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
 
@@ -95,14 +122,13 @@ export default function App() {
   const currentQ = questionsList[currentQIndex];
 
   const playerSiloPos = { x: 200, y: 260 };
-  const playerCityPos = { x: 175, y: 290 };
   const enemySiloPos = { x: 800, y: 170 };
-  const enemyCityPos = { x: 750, y: 190 };
 
   const missilesRef = useRef<MissileData[]>([]);
   const explosionsRef = useRef<ExplosionData[]>([]);
   const particlesRef = useRef<Particle[]>([]);
   const mapImageRef = useRef<HTMLImageElement | null>(null);
+  const finalBombardmentTriggered = useRef<boolean>(false);
 
   useEffect(() => {
     const img = new Image();
@@ -130,7 +156,6 @@ export default function App() {
     let aiTimer = 0;
 
     const spawnMushroomParticles = (x: number, y: number) => {
-      // Sienipilven varsi (stem)
       for (let i = 0; i < 40; i++) {
         particlesRef.current.push({
           x: x + (Math.random() * 12 - 6),
@@ -143,9 +168,8 @@ export default function App() {
           size: Math.random() * 6 + 4
         });
       }
-      // Sienipilven hattu (cap)
       for (let i = 0; i < 70; i++) {
-        const angle = Math.random() * Math.PI - Math.PI; // Leviää ylöspäin
+        const angle = Math.random() * Math.PI - Math.PI;
         const speed = Math.random() * 50 + 20;
         particlesRef.current.push({
           x: x,
@@ -181,16 +205,22 @@ export default function App() {
       lastTime = time;
       if (dt > 0.1) dt = 0.1;
 
+      // Tekoälyn iskut sodan aikana
       if (!gameOver && defcon === 1) {
         aiTimer += dt;
-        if (aiTimer > 9.0) {
+        if (aiTimer > 8.0) {
           aiTimer = 0;
-          const target = Math.random() > 0.5 ? playerCityPos : playerSiloPos;
+          // Valitse satunnainen elossa oleva pelaajan kaupunki tai siilo maaliksi
+          const alivePlayerCities = playerCities.filter(c => c.alive);
+          const target = alivePlayerCities.length > 0
+              ? alivePlayerCities[Math.floor(Math.random() * alivePlayerCities.length)]
+              : { x: playerSiloPos.x, y: playerSiloPos.y };
+
           missilesRef.current.push({
             id: Math.random(),
             startX: enemySiloPos.x, startY: enemySiloPos.y,
-            targetX: target.x + (Math.random() * 40 - 20),
-            targetY: target.y + (Math.random() * 40 - 20),
+            targetX: target.x + (Math.random() * 20 - 10),
+            targetY: target.y + (Math.random() * 20 - 10),
             currentX: enemySiloPos.x, currentY: enemySiloPos.y,
             prevX: enemySiloPos.x, prevY: enemySiloPos.y,
             distance: Math.hypot(target.x - enemySiloPos.x, target.y - enemySiloPos.y),
@@ -201,7 +231,7 @@ export default function App() {
             isInterceptor: false,
             trail: []
           });
-          setMessage("HÄLYTYS: Vihollinen on laukaissut ICBM-ohjuksen!");
+          setMessage("HÄLYTYS: Vihollinen on laukaissut ICBM-ohjuksen kohteeseen!");
         }
       }
 
@@ -223,28 +253,30 @@ export default function App() {
             explosionsRef.current.push({ id: Math.random(), x: m.targetX, y: m.targetY, radius: 5, maxRadius: 35, alpha: 1.0, isPlayer: true, flashAlpha: 0, isMushroom: false });
             spawnInterceptorParticles(m.targetX, m.targetY);
           } else {
-            // Ydinräjähdys
             explosionsRef.current.push({ id: Math.random(), x: m.targetX, y: m.targetY, radius: 5, maxRadius: 70, alpha: 1.0, isPlayer: m.isPlayer, flashAlpha: 1.0, isMushroom: true });
             spawnMushroomParticles(m.targetX, m.targetY);
 
+            // Tarkistetaan osumat kohteisiin
             if (m.isPlayer) {
-              if (Math.hypot(m.targetX - enemyCityPos.x, m.targetY - enemyCityPos.y) < 55 ||
-                  Math.hypot(m.targetX - enemySiloPos.x, m.targetY - enemySiloPos.y) < 55) {
-                setEnemyHP((prev) => {
-                  const next = Math.max(0, prev - 35);
-                  if (next <= 0) { setGameOver(true); setMessage("VOITTO: Vihollisvaltio on tuhottu."); }
-                  return next;
-                });
-              }
+              // Osuiko vihollisen kaupunkiin?
+              setEnemyCities(prev => prev.map(city => {
+                if (city.alive && Math.hypot(m.targetX - city.x, m.targetY - city.y) < 40) {
+                  const nextHp = city.hp - 100; // Tuhoutuu kerrasta tai vaurioituu
+                  if (nextHp <= 0) setMessage(`VIHOLLISKAUPUNKI TUHOUTUI: ${city.name} on pyyhitty pois kartalta!`);
+                  return { ...city, hp: nextHp, alive: nextHp > 0 };
+                }
+                return city;
+              }));
             } else {
-              if (Math.hypot(m.targetX - playerCityPos.x, m.targetY - playerCityPos.y) < 55 ||
-                  Math.hypot(m.targetX - playerSiloPos.x, m.targetY - playerSiloPos.y) < 55) {
-                setPlayerHP((prev) => {
-                  const next = Math.max(0, prev - 35);
-                  if (next <= 0) { setGameOver(true); setMessage("TAPPIO: Puolustus petti."); }
-                  return next;
-                });
-              }
+              // Osuiko pelaajan kaupunkiin?
+              setPlayerCities(prev => prev.map(city => {
+                if (city.alive && Math.hypot(m.targetX - city.x, m.targetY - city.y) < 40) {
+                  const nextHp = city.hp - 100;
+                  if (nextHp <= 0) setMessage(`HÄLYTYS: Kotikaupunki ${city.name} on tuhoutunut ydiniskussa!`);
+                  return { ...city, hp: nextHp, alive: nextHp > 0 };
+                }
+                return city;
+              }));
             }
           }
         } else {
@@ -261,12 +293,26 @@ export default function App() {
         }
       });
 
+      // Tarkistetaan voittaja / häviäjä (kaikki kaupungit tuhottu)
+      if (!gameOver) {
+        const playerAnyAlive = playerCities.some(c => c.alive);
+        const enemyAnyAlive = enemyCities.some(c => c.alive);
+
+        if (!playerAnyAlive) {
+          setGameOver(true);
+          setMessage("TAPPIO: Kaikki kotimaan kaupungit on tuhottu. Valtiosi on lannistettu.");
+        } else if (!enemyAnyAlive) {
+          setGameOver(true);
+          setMessage("VOITTO: Kaikki vihollisen kaupungit on tuhottu. Olet voittanut sodan!");
+        }
+      }
+
       // Hiukkasten päivitys
       particlesRef.current.forEach((p) => {
         p.x += p.vx * dt;
         p.y += p.vy * dt;
         p.life += dt;
-        p.size += dt * 3; // Pilvipotkut laajenevat nouseessaan
+        p.size += dt * 3;
       });
       particlesRef.current = particlesRef.current.filter((p) => p.life < p.maxLife);
 
@@ -278,7 +324,7 @@ export default function App() {
               if (Math.hypot(m.currentX - ex.x, m.currentY - ex.y) < ex.radius) {
                 m.active = false;
                 spawnInterceptorParticles(m.currentX, m.currentY);
-                setMessage("TORJUNTA ONNISTUI: Vihollisen ohjus tuhottu!");
+                setMessage("TORJUNTA ONNISTUI: Vihollisen ohjus tuhottu ilmassa!");
               }
             }
           });
@@ -305,18 +351,32 @@ export default function App() {
         ctx.fillStyle = '#03060a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
-      // Kohteet
+      // Pelaajan siilo ja kaupungit
       ctx.fillStyle = '#00ffff';
       ctx.fillRect(playerSiloPos.x - 8, playerSiloPos.y - 8, 16, 16);
-      ctx.beginPath(); ctx.arc(playerCityPos.x, playerCityPos.y, 8, 0, Math.PI * 2); ctx.fill();
 
+      playerCities.forEach(city => {
+        ctx.fillStyle = city.alive ? '#00ffff' : '#555555';
+        ctx.beginPath(); ctx.arc(city.x, city.y, city.alive ? 7 : 4, 0, Math.PI * 2); ctx.fill();
+        ctx.font = '10px Courier New';
+        ctx.fillStyle = city.alive ? '#00ffff' : '#777777';
+        ctx.fillText(city.name, city.x - 15, city.y - 12);
+      });
+
+      // Vihollisen siilo ja kaupungit
       ctx.fillStyle = '#ff3333';
       ctx.fillRect(enemySiloPos.x - 8, enemySiloPos.y - 8, 16, 16);
-      ctx.beginPath(); ctx.arc(enemyCityPos.x, enemyCityPos.y, 8, 0, Math.PI * 2); ctx.fill();
 
-      // OHJUKSET & LENTORATAVANAT
+      enemyCities.forEach(city => {
+        ctx.fillStyle = city.alive ? '#ff3333' : '#555555';
+        ctx.beginPath(); ctx.arc(city.x, city.y, city.alive ? 7 : 4, 0, Math.PI * 2); ctx.fill();
+        ctx.font = '10px Courier New';
+        ctx.fillStyle = city.alive ? '#ff3333' : '#777777';
+        ctx.fillText(city.name, city.x - 15, city.y - 12);
+      });
+
+      // Ohjukset
       missilesRef.current.forEach((m) => {
-        // Savuvana
         for (let i = 0; i < m.trail.length - 1; i++) {
           const pt1 = m.trail[i];
           const pt2 = m.trail[i + 1];
@@ -331,7 +391,6 @@ export default function App() {
           ctx.stroke();
         }
 
-        // REALISTINEN OHJUKSEN MUOTO (KULMAN MUKAAN KÄÄNTYVÄ SIIVEKÄS RETA)
         const dx = m.currentX - m.prevX;
         const dy = m.currentY - m.prevY;
         const angle = Math.atan2(dy, dx);
@@ -340,7 +399,6 @@ export default function App() {
         ctx.translate(m.currentX, m.currentY);
         ctx.rotate(angle);
 
-        // Moottoriliekki perässä
         ctx.fillStyle = '#ffaa00';
         ctx.beginPath();
         ctx.moveTo(-8, -2);
@@ -348,23 +406,21 @@ export default function App() {
         ctx.lineTo(-8, 2);
         ctx.fill();
 
-        // Ohjuksen runko
         ctx.fillStyle = m.isInterceptor ? '#00ffff' : m.isPlayer ? '#e0e0e0' : '#ff4444';
         ctx.beginPath();
-        ctx.moveTo(8, 0);              // Kärki
-        ctx.lineTo(-6, -3);            // Yläkulma
-        ctx.lineTo(-6, 3);             // Alakulma
+        ctx.moveTo(8, 0);
+        ctx.lineTo(-6, -3);
+        ctx.lineTo(-6, 3);
         ctx.closePath();
         ctx.fill();
 
-        // Siivekkeet
         ctx.fillStyle = '#888888';
         ctx.fillRect(-6, -5, 3, 10);
 
         ctx.restore();
       });
 
-      // HIUKKASET (SIENIPILVEN TULI JA SAVU)
+      // Hiukkaset
       particlesRef.current.forEach((p) => {
         const alpha = 1 - (p.life / p.maxLife);
         ctx.fillStyle = p.color;
@@ -375,7 +431,7 @@ export default function App() {
         ctx.globalAlpha = 1.0;
       });
 
-      // REALISTISET YDINRÄJÄHDYKSET & SIENIPILVET
+      // Räjähdykset
       explosionsRef.current.forEach((ex) => {
         ctx.save();
 
@@ -385,14 +441,12 @@ export default function App() {
         }
 
         if (ex.isMushroom) {
-          // Paineaalto maata pitkin
           ctx.strokeStyle = `rgba(255, 200, 100, ${ex.alpha * 0.7})`;
           ctx.lineWidth = 3;
           ctx.beginPath();
           ctx.ellipse(ex.x, ex.y, ex.radius * 1.2, ex.radius * 0.4, 0, 0, Math.PI * 2);
           ctx.stroke();
 
-          // Tulipallo keskiössä
           const radGrad = ctx.createRadialGradient(ex.x, ex.y, 0, ex.x, ex.y, ex.radius);
           radGrad.addColorStop(0, `rgba(255, 255, 255, ${ex.alpha})`);
           radGrad.addColorStop(0.2, `rgba(255, 220, 0, ${ex.alpha * 0.9})`);
@@ -404,7 +458,6 @@ export default function App() {
           ctx.arc(ex.x, ex.y, ex.radius * 0.8, 0, Math.PI * 2);
           ctx.fill();
         } else {
-          // Tavallinen ABM-räjähdys
           ctx.strokeStyle = `rgba(0, 255, 255, ${ex.alpha})`;
           ctx.lineWidth = 2;
           ctx.beginPath();
@@ -420,7 +473,7 @@ export default function App() {
 
     animationFrameId = requestAnimationFrame(gameLoop);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [gameOver, defcon]);
+  }, [gameOver, defcon, playerCities, enemyCities]);
 
   const handleAnswer = (crisisEffect: number, resourceEffect: number, reply: string) => {
     setMessage(reply);
@@ -495,6 +548,10 @@ export default function App() {
     } else { setMessage("Ei tarpeeksi resursseja (vaatii 15 pt)."); }
   };
 
+  // Lasketaan elossa olevat kaupungit HUDiin
+  const playerAliveCount = playerCities.filter(c => c.alive).length;
+  const enemyAliveCount = enemyCities.filter(c => c.alive).length;
+
   return (
       <div style={{ backgroundColor: '#05080f', color: '#00ffcc', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'Courier New, monospace', margin: 0, padding: '20px', position: 'relative' }}>
 
@@ -504,15 +561,15 @@ export default function App() {
 
         {/* HUD */}
         <div style={{ display: 'flex', justifyContent: 'space-between', width: '950px', marginBottom: '8px', fontSize: '13px', borderBottom: '1px solid #1a3a5c', paddingBottom: '6px' }}>
-          <div>Pelaajan Kunto: <strong style={{ color: '#00ffff' }}>{playerHP}%</strong> | Siilot: <strong>{playerSilos}</strong> | ABM: <strong>{playerABM}</strong></div>
+          <div>Omat kaupungit: <strong style={{ color: '#00ffff' }}>{playerAliveCount}/3</strong> | ABM: <strong>{playerABM}</strong></div>
           <div>Resurssit: <strong style={{ color: '#ffcc00' }}>{resources} pt</strong></div>
-          <div>Vihollisen Kunto: <strong style={{ color: '#ff3333' }}>{enemyHP}%</strong></div>
+          <div>Vihollisen kaupungit: <strong style={{ color: '#ff3333' }}>{enemyAliveCount}/3</strong></div>
           <div>Kriisi: <strong style={{ color: crisisLevel > 70 ? '#ff3333' : 'yellow' }}>{crisisLevel}%</strong> | DEFCON: <strong style={{ color: defcon === 1 ? '#ff3333' : 'yellow' }}>{defcon}</strong></div>
         </div>
 
         {/* Yläpalkki */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', width: '950px', justifyContent: 'center' }}>
-          {defcon > 1 ? (
+          {defcon > 1 && !gameOver ? (
               <>
                 <button
                     onClick={() => setShowDiplomacyModal(true)}
@@ -556,8 +613,8 @@ export default function App() {
                 </button>
               </>
           ) : (
-              <div style={{ fontSize: '13px', color: '#ff3333', fontWeight: 'bold' }}>
-                ⚠ SOTA ON SYTTYNYT! Diplomatia epäonnistui. Puolusta aluettasi tai iske viholliseen!
+              <div style={{ fontSize: '13px', color: gameOver ? '#00ffff' : '#ff3333', fontWeight: 'bold' }}>
+                {gameOver ? 'PELI PÄÄTTYI. Kaikki vastapuolen kaupungit on tuhottu.' : '⚠ SOTA ON SYTTYNYT! Puolusta kaupunkejasi tai iske viholliseen!'}
               </div>
           )}
         </div>
@@ -568,7 +625,7 @@ export default function App() {
             width={950}
             height={420}
             onClick={handleCanvasClick}
-            style={{ border: '2px solid #1a3a5c', boxShadow: '0 0 25px rgba(0, 255, 204, 0.15)', cursor: defcon === 1 ? 'crosshair' : 'not-allowed', background: '#020408' }}
+            style={{ border: '2px solid #1a3a5c', boxShadow: '0 0 25px rgba(0, 255, 204, 0.15)', cursor: defcon === 1 && !gameOver ? 'crosshair' : 'not-allowed', background: '#020408' }}
         />
 
         <div style={{ marginTop: '10px', fontSize: '12px', color: '#88aaff', textAlign: 'center', maxWidth: '900px' }}>
@@ -576,7 +633,7 @@ export default function App() {
         </div>
 
         {/* POPUP DIALOGI */}
-        {showDiplomacyModal && defcon > 1 && (
+        {showDiplomacyModal && defcon > 1 && !gameOver && (
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(2, 5, 12, 0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
               <div style={{ width: '600px', backgroundColor: '#0b1626', border: '2px solid #00aaff', borderRadius: '8px', padding: '20px', boxShadow: '0 0 30px rgba(0, 170, 255, 0.3)' }}>
 
