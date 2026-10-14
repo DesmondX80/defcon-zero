@@ -65,20 +65,20 @@ interface DiplomacyQuestion {
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Omat kaupungit ja siilo (Pohjois-Amerikka / Länsi)
-  const playerSiloPos = { x: 220, y: 200 };
+  // Länsi (Pohjois-Amerikka) - koordinaatit korjattu karttapohjan mukaan
+  const playerSiloPos = { x: 210, y: 150 }; // Keski-USA / Kansas
   const [playerCities, setPlayerCities] = useState<City[]>([
-    { id: 'pc1', name: 'Washington', x: 270, y: 220, hp: 100, alive: true },
-    { id: 'pc2', name: 'New York', x: 290, y: 190, hp: 100, alive: true },
-    { id: 'pc3', name: 'Los Angeles', x: 130, y: 240, hp: 100, alive: true }
+    { id: 'pc1', name: 'Washington', x: 265, y: 175, hp: 100, alive: true },
+    { id: 'pc2', name: 'New York', x: 275, y: 160, hp: 100, alive: true },
+    { id: 'pc3', name: 'Los Angeles', x: 150, y: 185, hp: 100, alive: true }
   ]);
 
-  // Vihollisen kaupungit ja siilo (Euraasia / Venäjä)
-  const enemySiloPos = { x: 730, y: 160 };
+  // Itä (Eurooppa / Venäjä) - koordinaatit korjattu karttapohjan mukaan
+  const enemySiloPos = { x: 670, y: 130 }; // Moskovan alue / Länsi-Venäjä
   const [enemyCities, setEnemyCities] = useState<City[]>([
-    { id: 'ec1', name: 'Moskova', x: 680, y: 180, hp: 100, alive: true },
-    { id: 'ec2', name: 'Pietari', x: 650, y: 140, hp: 100, alive: true },
-    { id: 'ec3', name: 'Novosibirsk', x: 790, y: 190, hp: 100, alive: true }
+    { id: 'ec1', name: 'Moskova', x: 650, y: 140, hp: 100, alive: true },
+    { id: 'ec2', name: 'Pietari', x: 630, y: 115, hp: 100, alive: true },
+    { id: 'ec3', name: 'Novosibirsk', x: 760, y: 150, hp: 100, alive: true }
   ]);
 
   const [playerABM, setPlayerABM] = useState<number>(12);
@@ -136,7 +136,6 @@ export default function App() {
     return () => clearInterval(interval);
   }, [gameOver, defcon]);
 
-  // Pääsilmukka
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -197,7 +196,6 @@ export default function App() {
       lastTime = time;
       if (dt > 0.1) dt = 0.1;
 
-      // Vihollisen hyökkäys alkaa sen omasta siilosta kohti pelaajan kaupunkeja
       if (!gameOver && defcon === 1) {
         aiTimer += dt;
         if (aiTimer > 8.0) {
@@ -334,32 +332,32 @@ export default function App() {
         ctx.fillStyle = '#03060a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
-      // Piirretään oma siilo (pelaajan laukaisupaikka)
+      // Oma siilo
       ctx.fillStyle = '#00ffff';
-      ctx.fillRect(playerSiloPos.x - 10, playerSiloPos.y - 10, 20, 20);
-      ctx.font = '11px Courier New';
-      ctx.fillText('OMA SIILO', playerSiloPos.x - 25, playerSiloPos.y - 15);
+      ctx.fillRect(playerSiloPos.x - 7, playerSiloPos.y - 7, 14, 14);
+      ctx.font = '10px Courier New';
+      ctx.fillText('OMA SIILO', playerSiloPos.x - 22, playerSiloPos.y - 10);
 
       playerCities.forEach(city => {
         ctx.fillStyle = city.alive ? '#00ffff' : '#555555';
-        ctx.beginPath(); ctx.arc(city.x, city.y, city.alive ? 7 : 4, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(city.x, city.y, city.alive ? 6 : 4, 0, Math.PI * 2); ctx.fill();
         ctx.font = '10px Courier New';
         ctx.fillStyle = city.alive ? '#00ffff' : '#777777';
-        ctx.fillText(city.name, city.x - 15, city.y - 12);
+        ctx.fillText(city.name, city.x - 15, city.y - 8);
       });
 
-      // Piirretään vihollisen siilo (vihollisen laukaisupaikka)
+      // Vihollisen siilo
       ctx.fillStyle = '#ff3333';
-      ctx.fillRect(enemySiloPos.x - 10, enemySiloPos.y - 10, 20, 20);
-      ctx.font = '11px Courier New';
-      ctx.fillText('VIHOLLISEN SIILO', enemySiloPos.x - 35, enemySiloPos.y - 15);
+      ctx.fillRect(enemySiloPos.x - 7, enemySiloPos.y - 7, 14, 14);
+      ctx.font = '10px Courier New';
+      ctx.fillText('VIHOLLISEN SIILO', enemySiloPos.x - 30, enemySiloPos.y - 10);
 
       enemyCities.forEach(city => {
         ctx.fillStyle = city.alive ? '#ff3333' : '#555555';
-        ctx.beginPath(); ctx.arc(city.x, city.y, city.alive ? 7 : 4, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(city.x, city.y, city.alive ? 6 : 4, 0, Math.PI * 2); ctx.fill();
         ctx.font = '10px Courier New';
         ctx.fillStyle = city.alive ? '#ff3333' : '#777777';
-        ctx.fillText(city.name, city.x - 15, city.y - 12);
+        ctx.fillText(city.name, city.x - 15, city.y - 8);
       });
 
       missilesRef.current.forEach((m) => {
@@ -479,7 +477,6 @@ export default function App() {
     setCurrentQIndex((prev) => (prev + 1) % questionsList.length);
   };
 
-  // Pelaajan ohjuksen laukaisu omasta siilosta (tai torjunta)
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (gameOver) return;
     if (defcon > 1) {
@@ -504,7 +501,6 @@ export default function App() {
       });
       setMessage("ABM-torjuntaohjus laukaistu omasta tukikohdasta.");
     } else if (playerSilos > 0) {
-      // ICBM lähetetään pelaajan omasta siilosta kohti klikattua kohdetta
       missilesRef.current.push({
         id: Math.random(),
         startX: playerSiloPos.x, startY: playerSiloPos.y,
