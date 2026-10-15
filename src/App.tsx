@@ -70,9 +70,12 @@ export default function App() {
   const [techLevel, setTechLevel] = useState<number>(1);
   const [enemyTechLevel, setEnemyTechLevel] = useState<number>(1);
 
-  const [approvalRating, setApprovalRating] = useState<number>(50); // %
-  const [bombers, setBombers] = useState<number>(2); // Pommittajalaivueet
-  const [submarines, setSubmarines] = useState<number>(1); // Ydinsukellusveneet
+  const [approvalRating, setApprovalRating] = useState<number>(50);
+  const [bombers, setBombers] = useState<number>(2);
+  const [submarines, setSubmarines] = useState<number>(1);
+
+  // Leijutusefektin tila
+  const [hoveredBtn, setHoveredBtn] = useState<string | null>(null);
 
   const playerSiloPos = { x: 260, y: 165 };
   const [playerCities, setPlayerCities] = useState<City[]>([
@@ -97,7 +100,6 @@ export default function App() {
   const [gameOver, setGameOver] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("HERRA PRESIDENTTI: Astuit juuri virkaasi. Kylmä sota on alkanut, ja kansakunta odottaa linjauksianne.");
 
-  // Laajennettu valikoima diplomaattisia ja strategisia kysymyksiä
   const questionsList: DiplomacyQuestion[] = [
     {
       title: "VIRKAASTUMINEN // STRATEGINEN DOKTRIINI",
@@ -133,24 +135,6 @@ export default function App() {
         { text: "Allekirjoitetaan sopimus ja vähennetään jännitteitä radikaalisti.", crisisEffect: -35, resourceEffect: +10, approvalEffect: 14, reply: "Historiallinen rauhansopimus solmittu! Kriisi laski merkittävästi." },
         { text: "Hylätään sopimus teeskennellen vihollisen epärehellisyyttä.", crisisEffect: +15, resourceEffect: -5, approvalEffect: -8, reply: "Sotaosapuolet pettyivät. Jännitteet kiristyivät." },
         { text: "Vaaditaan ylimääräisiä tarkastuksia, jotka vihollinen hylkää.", crisisEffect: +5, resourceEffect: 0, approvalEffect: 4, reply: "Neuvottelut ajautuivat umpikujaan." }
-      ]
-    },
-    {
-      title: "TALOUSKRIISI // BUDJETTITAISTELU",
-      question: "Valtionvelka kasvaa varustelun vuoksi. Miten rahoitetaan puolustusmenot?",
-      options: [
-        { text: "Leikataan sosiaalimenoja ja suunnataan varat ohjustuotantoon.", crisisEffect: +10, resourceEffect: +25, approvalEffect: -18, reply: "Resurssit kasvoivat, mutta työläiset ja äänestäjät raivostuivat!" },
-        { text: "Korotetaan suuryritysten veroja ja tuetaan kotitalouksia.", crisisEffect: -5, resourceEffect: -10, approvalEffect: 12, reply: "Kansan suosio kasvoi, mutta puolustusteollisuus kärsii." },
-        { text: "Otetaan ulkomaista velkaa ja pidetään budjetti ennallaan.", crisisEffect: 0, resourceEffect: +10, approvalEffect: 2, reply: "Poliittinen kompromissi säilytti nykytilanteen." }
-      ]
-    },
-    {
-      title: "AVARUUSKILPA // TEKNOLOGIAN ETRULINJA",
-      question: "Tiedemiehet ehdottavat satelliittiohjelman käynnistämistä ennen vihollista.",
-      options: [
-        { text: "Rahoitetaan ohjelma täysimääräisesti kansallisen ylpeyden vuoksi.", crisisEffect: +5, resourceEffect: -20, approvalEffect: 20, reply: "Ensimmäinen satelliitti kiertää maapalloa! Vaalikannatus räjähti kasvuun!" },
-        { text: "Keskitytään pelkästään sotilaallisiin mannertenvälisiin ohjuksiin.", crisisEffect: +10, resourceEffect: -10, approvalEffect: -2, reply: "Armeija kiittää, mutta nuoriso pettyi avaruustutkimuksen hylkäämiseen." },
-        { text: "Torjutaan hanke turhana resurssien tuhlauksena.", crisisEffect: -5, resourceEffect: +10, approvalEffect: -8, reply: "Säästitte rahaa, mutta vihollinen voitti teknologisen symbolisen voiton." }
       ]
     }
   ];
@@ -536,7 +520,6 @@ export default function App() {
       return nextCrisis;
     });
 
-    // Siirrytään satunnaisesti seuraavaan kysymykseen listalta
     setCurrentQIndex((prev) => (prev + 1) % questionsList.length);
   };
 
@@ -630,26 +613,34 @@ export default function App() {
                 {defcon > 1 && (
                     <button
                         onClick={() => setShowDiplomacyModal(true)}
-                        style={{ ...btnStyle, borderColor: '#00aaff', color: '#00aaff', fontWeight: 'bold' }}
+                        onMouseEnter={() => setHoveredBtn('diplomacy')}
+                        onMouseLeave={() => setHoveredBtn(null)}
+                        style={getBtnStyle(hoveredBtn === 'diplomacy', '#00aaff')}
                     >
                       📜 Valtioneuvoston istunto
                     </button>
                 )}
                 <button
                     onClick={upgradeTech}
-                    style={{ ...btnStyle, borderColor: '#ffcc00', color: '#ffcc00' }}
+                    onMouseEnter={() => setHoveredBtn('tech')}
+                    onMouseLeave={() => setHoveredBtn(null)}
+                    style={getBtnStyle(hoveredBtn === 'tech', '#ffcc00')}
                 >
                   🚀 Kehitä ICBM (40 pt)
                 </button>
                 <button
                     onClick={buildBomber}
-                    style={btnStyle}
+                    onMouseEnter={() => setHoveredBtn('bomber')}
+                    onMouseLeave={() => setHoveredBtn(null)}
+                    style={getBtnStyle(hoveredBtn === 'bomber', '#00ffcc')}
                 >
                   ✈ Rakenna Pommittaja (30 pt)
                 </button>
                 <button
                     onClick={buildSubmarine}
-                    style={btnStyle}
+                    onMouseEnter={() => setHoveredBtn('sub')}
+                    onMouseLeave={() => setHoveredBtn(null)}
+                    style={getBtnStyle(hoveredBtn === 'sub', '#00ffcc')}
                 >
                   ⚓ Rakenna Sukellusvene (35 pt)
                 </button>
@@ -692,20 +683,39 @@ export default function App() {
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '15px' }}>
-                  {currentQ.options.map((opt, idx) => (
-                      <button
-                          key={idx}
-                          onClick={() => handleAnswer(opt.crisisEffect, opt.resourceEffect, opt.approvalEffect, opt.reply)}
-                          style={optionBtnStyle}
-                      >
-                        › {opt.text}
-                      </button>
-                  ))}
+                  {currentQ.options.map((opt, idx) => {
+                    const optionKey = `opt-${idx}`;
+                    const isHovered = hoveredBtn === optionKey;
+                    return (
+                        <button
+                            key={idx}
+                            onClick={() => handleAnswer(opt.crisisEffect, opt.resourceEffect, opt.approvalEffect, opt.reply)}
+                            onMouseEnter={() => setHoveredBtn(optionKey)}
+                            onMouseLeave={() => setHoveredBtn(null)}
+                            style={{
+                              ...optionBtnStyle,
+                              backgroundColor: isHovered ? '#14355a' : '#05080f',
+                              borderColor: isHovered ? '#00ffcc' : '#1a3a5c',
+                              color: isHovered ? '#ffffff' : '#00ffcc',
+                              boxShadow: isHovered ? '0 0 12px rgba(0, 255, 204, 0.4)' : 'none',
+                              transform: isHovered ? 'translateX(5px)' : 'none'
+                            }}
+                        >
+                          › {opt.text}
+                        </button>
+                    );
+                  })}
                 </div>
 
                 <button
                     onClick={() => setShowDiplomacyModal(false)}
-                    style={{ ...btnStyle, borderColor: '#666', color: '#888', width: '100%', marginTop: '5px' }}
+                    onMouseEnter={() => setHoveredBtn('close')}
+                    onMouseLeave={() => setHoveredBtn(null)}
+                    style={{
+                      ...getBtnStyle(hoveredBtn === 'close', '#888888'),
+                      width: '100%',
+                      marginTop: '5px'
+                    }}
                 >
                   Palaa kartalle (Lykkää päätöstä)
                 </button>
@@ -718,16 +728,19 @@ export default function App() {
   );
 }
 
-const btnStyle: React.CSSProperties = {
-  backgroundColor: '#05080f',
-  color: '#00ffcc',
-  border: '1px solid #00ffcc',
+const getBtnStyle = (isHovered: boolean, accentColor: string = '#00ffcc'): React.CSSProperties => ({
+  backgroundColor: isHovered ? '#102338' : '#05080f',
+  color: isHovered ? '#ffffff' : accentColor,
+  border: `1px solid ${isHovered ? accentColor : accentColor}`,
   padding: '6px 12px',
   fontFamily: 'Courier New, monospace',
   cursor: 'pointer',
   fontSize: '12px',
-  borderRadius: '4px'
-};
+  borderRadius: '4px',
+  boxShadow: isHovered ? `0 0 12px ${accentColor}` : 'none',
+  transform: isHovered ? 'translateY(-1px)' : 'none',
+  transition: 'all 0.15s ease'
+});
 
 const optionBtnStyle: React.CSSProperties = {
   backgroundColor: '#05080f',
@@ -738,5 +751,6 @@ const optionBtnStyle: React.CSSProperties = {
   cursor: 'pointer',
   fontSize: '13px',
   textAlign: 'left',
-  borderRadius: '4px'
+  borderRadius: '4px',
+  transition: 'all 0.15s ease'
 };
