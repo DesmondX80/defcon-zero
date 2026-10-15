@@ -74,8 +74,10 @@ export default function App() {
   const [bombers, setBombers] = useState<number>(2);
   const [submarines, setSubmarines] = useState<number>(1);
 
-  // Leijutusefektin tila
   const [hoveredBtn, setHoveredBtn] = useState<string | null>(null);
+
+  // Pelin vaiheet: 'inauguration' (virkaanastujaiset) | 'game' (peli/kartta) | 'diplomacy' (paperien allekirjoitus)
+  const [gamePhase, setGamePhase] = useState<'inauguration' | 'game' | 'diplomacy'>('inauguration');
 
   const playerSiloPos = { x: 260, y: 165 };
   const [playerCities, setPlayerCities] = useState<City[]>([
@@ -96,9 +98,8 @@ export default function App() {
 
   const [defcon, setDefcon] = useState<number>(3);
   const [crisisLevel, setCrisisLevel] = useState<number>(20);
-  const [showDiplomacyModal, setShowDiplomacyModal] = useState<boolean>(true);
   const [gameOver, setGameOver] = useState<boolean>(false);
-  const [message, setMessage] = useState<string>("HERRA PRESIDENTTI: Astuit juuri virkaasi. Kylmä sota on alkanut, ja kansakunta odottaa linjauksianne.");
+  const [message, setMessage] = useState<string>("HERRA PRESIDENTTI: Astuit juuri virkaasi. Tarkastele valtion arsenaalia ja aloita virkakausi.");
 
   const questionsList: DiplomacyQuestion[] = [
     {
@@ -155,7 +156,7 @@ export default function App() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (gameOver || showDiplomacyModal) return;
+      if (gameOver || gamePhase !== 'game') return;
 
       setYear((prevYear) => {
         const nextYear = prevYear + 1;
@@ -178,7 +179,7 @@ export default function App() {
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [gameOver, defcon, showDiplomacyModal]);
+  }, [gameOver, defcon, gamePhase]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -240,7 +241,7 @@ export default function App() {
       lastTime = time;
       if (dt > 0.1) dt = 0.1;
 
-      if (!gameOver && defcon === 1 && !showDiplomacyModal) {
+      if (!gameOver && defcon === 1 && gamePhase === 'game') {
         aiTimer += dt;
         if (aiTimer > 7.0) {
           aiTimer = 0;
@@ -502,13 +503,13 @@ export default function App() {
 
     animationFrameId = requestAnimationFrame(gameLoop);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [gameOver, defcon, playerCities, enemyCities, enemyTechLevel, showDiplomacyModal]);
+  }, [gameOver, defcon, playerCities, enemyCities, enemyTechLevel, gamePhase]);
 
   const handleAnswer = (crisisEffect: number, resourceEffect: number, approvalEffect: number, reply: string) => {
     setMessage(reply);
     setResources((prev) => Math.max(0, prev + resourceEffect));
     setApprovalRating((prev) => Math.max(0, Math.min(100, prev + approvalEffect)));
-    setShowDiplomacyModal(false);
+    setGamePhase('game'); // Siirrytään takaisin karttanäkymään paperien allekirjoituksen jälkeen
 
     setCrisisLevel((prev) => {
       const nextCrisis = Math.max(0, Math.min(100, prev + crisisEffect));
@@ -524,7 +525,7 @@ export default function App() {
   };
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (gameOver || showDiplomacyModal) return;
+    if (gameOver || gamePhase !== 'game') return;
     if (defcon > 1) {
       setMessage("Virka-aika (vuosi " + year + "). Hallitse arsenaalia, kehitä kalustoa ja tarkkaile vaalikannatusta.");
       return;
@@ -612,7 +613,7 @@ export default function App() {
               <>
                 {defcon > 1 && (
                     <button
-                        onClick={() => setShowDiplomacyModal(true)}
+                        onClick={() => setGamePhase('diplomacy')}
                         onMouseEnter={() => setHoveredBtn('diplomacy')}
                         onMouseLeave={() => setHoveredBtn(null)}
                         style={getBtnStyle(hoveredBtn === 'diplomacy', '#00aaff')}
@@ -664,17 +665,60 @@ export default function App() {
           <p style={{ margin: 0, fontWeight: 'bold' }}>{message}</p>
         </div>
 
-        {showDiplomacyModal && !gameOver && (
+        {/* 1. VIRKAASTUJAISRUUTU (NÄKYY PELIN ALUSSA) */}
+        {gamePhase === 'inauguration' && !gameOver && (
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(2, 5, 12, 0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20 }}>
+              <div style={{ width: '680px', backgroundColor: '#0b1626', border: '2px solid #00ffcc', borderRadius: '8px', padding: '30px', boxShadow: '0 0 40px rgba(0, 255, 204, 0.35)' }}>
+
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                  <div style={{ fontSize: '36px', marginBottom: '10px' }}>🏛</div>
+                  <h2 style={{ fontSize: '20px', color: '#00ffcc', letterSpacing: '2px', margin: 0 }}>VIRKA-ASTUMINEN // VUOSI 1946</h2>
+                  <div style={{ fontSize: '12px', color: '#88aacc', marginTop: '4px' }}>Valkoinen talo, Washington D.C.</div>
+                </div>
+
+                <div style={{ fontSize: '14px', color: '#e0f7ff', lineHeight: '1.6', marginBottom: '25px', backgroundColor: '#05080f', padding: '16px', borderRadius: '4px', borderLeft: '3px solid #00ffcc' }}>
+                  <p style={{ margin: '0 0 10px 0' }}>Herra presidentti, teidät on valittu kansakunnan johtoon toisen maailmansodan jälkeisenä herkkänä aikakautena.</p>
+                  <p style={{ margin: '0 0 10px 0' }}>Pääesikunnan luovuttama salainen kansio vahvistaa valtion nykyisen arsenaalin:</p>
+                  <ul style={{ margin: 0, paddingLeft: '20px', color: '#ffcc00' }}>
+                    <li><strong>Strategiset siilot:</strong> Valmiustaso 1 (Perustoiminta)</li>
+                    <li><strong>Strategiset pommittajat:</strong> 2 laivuetta valmiudessa</li>
+                    <li><strong>Ydinsukellusveneet:</strong> 1 alus merialueilla</li>
+                  </ul>
+                  <p style={{ margin: '10px 0 0 0' }}>Kylmä sota on alkanut. Seuraavaksi teidän on astuttava työhuoneeseen ja allekirjoitettava ensimmäiset virkamääräykset ja ulkopoliittiset sopimukset.</p>
+                </div>
+
+                <button
+                    onClick={() => setGamePhase('diplomacy')}
+                    onMouseEnter={() => setHoveredBtn('inaug-btn')}
+                    onMouseLeave={() => setHoveredBtn(null)}
+                    style={{
+                      ...getBtnStyle(hoveredBtn === 'inaug-btn', '#00ffcc'),
+                      width: '100%',
+                      padding: '14px',
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      textAlign: 'center'
+                    }}
+                >
+                  📜 Allekirjoita virkamääräys ja siirry valtioneuvoston istuntoon
+                </button>
+
+              </div>
+            </div>
+        )}
+
+        {/* 2. DIPLOMATIAMODAALI (PAPERIEN ALLEKIRJOITUS) */}
+        {gamePhase === 'diplomacy' && !gameOver && (
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(2, 5, 12, 0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
               <div style={{ width: '640px', backgroundColor: '#0b1626', border: '2px solid #00aaff', borderRadius: '8px', padding: '24px', boxShadow: '0 0 35px rgba(0, 170, 255, 0.35)' }}>
 
                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '15px' }}>
                   <div style={{ width: '70px', height: '70px', border: '2px solid #00aaff', borderRadius: '6px', backgroundColor: '#05101a', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '32px' }}>
-                    🏛
+                    🖊
                   </div>
                   <div>
                     <div style={{ fontSize: '13px', color: '#00aaff', fontWeight: 'bold' }}>{currentQ.title}</div>
-                    <div style={{ fontSize: '15px', color: '#ffffff', fontWeight: 'bold' }}>Vaalikausi ja päätöksenteko</div>
+                    <div style={{ fontSize: '15px', color: '#ffffff', fontWeight: 'bold' }}>Valtioneuvoston virkaasiakirjat</div>
                   </div>
                 </div>
 
@@ -708,7 +752,7 @@ export default function App() {
                 </div>
 
                 <button
-                    onClick={() => setShowDiplomacyModal(false)}
+                    onClick={() => setGamePhase('game')}
                     onMouseEnter={() => setHoveredBtn('close')}
                     onMouseLeave={() => setHoveredBtn(null)}
                     style={{
@@ -717,7 +761,7 @@ export default function App() {
                       marginTop: '5px'
                     }}
                 >
-                  Palaa kartalle (Lykkää päätöstä)
+                  Palaa kartalle ilman allekirjoitusta
                 </button>
 
               </div>
