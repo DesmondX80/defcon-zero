@@ -78,15 +78,15 @@ export default function App() {
 
   const [gamePhase, setGamePhase] = useState<'inauguration' | 'game' | 'diplomacy' | 'enemyDeclaration'>('inauguration');
 
-  // Hienosäädetyt koordinaatit karttapohjan mukaisesti (950x420 canvas)
-  const playerSiloPos = { x: 235, y: 165 }; // Yhdysvaltojen sisämaa (Kansas/Nebraska)
+  // Siirretty USA / pelaajan kaupungit ja siilo enemmän vasemmalle Pohjois-Amerikan mantereelle
+  const playerSiloPos = { x: 195, y: 165 };
   const [playerCities, setPlayerCities] = useState<City[]>([
-    { id: 'pc1', name: 'Washington', x: 282, y: 172, hp: 100, alive: true },
-    { id: 'pc2', name: 'New York', x: 290, y: 158, hp: 100, alive: true },
-    { id: 'pc3', name: 'Los Angeles', x: 182, y: 182, hp: 100, alive: true }
+    { id: 'pc1', name: 'Washington', x: 235, y: 172, hp: 100, alive: true },
+    { id: 'pc2', name: 'New York', x: 245, y: 158, hp: 100, alive: true },
+    { id: 'pc3', name: 'Los Angeles', x: 140, y: 182, hp: 100, alive: true }
   ]);
 
-  const enemySiloPos = { x: 670, y: 135 }; // Ural/Länsi-Siperia
+  const enemySiloPos = { x: 670, y: 135 };
   const [enemyCities, setEnemyCities] = useState<City[]>([
     { id: 'ec1', name: 'Moskova', x: 588, y: 132, hp: 100, alive: true },
     { id: 'ec2', name: 'Pietari', x: 578, y: 112, hp: 100, alive: true },
