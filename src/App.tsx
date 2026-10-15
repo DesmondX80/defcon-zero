@@ -75,10 +75,8 @@ export default function App() {
   const [submarines, setSubmarines] = useState<number>(1);
 
   const [hoveredBtn, setHoveredBtn] = useState<string | null>(null);
-
   const [gamePhase, setGamePhase] = useState<'inauguration' | 'game' | 'diplomacy' | 'enemyDeclaration'>('inauguration');
 
-  // Siirretty USA / pelaajan kaupungit ja siilo enemmän vasemmalle Pohjois-Amerikan mantereelle
   const playerSiloPos = { x: 195, y: 165 };
   const [playerCities, setPlayerCities] = useState<City[]>([
     { id: 'pc1', name: 'Washington', x: 235, y: 172, hp: 100, alive: true },
@@ -101,53 +99,82 @@ export default function App() {
   const [gameOver, setGameOver] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("HERRA PRESIDENTTI: Astuit juuri virkaasi. Tarkastele valtion arsenaalia ja aloita virkakausi.");
 
+  // Laajennettu valikoima vihollisen nootteja ja kriisijulistuksia
   const enemyDeclarations: DiplomacyQuestion[] = [
     {
-      title: "VIHOLLISEN UHKAVAATIMUS // NOOTTI",
+      title: "VIHOLLISEN UHKAVAATIMUS // MERIALUEET",
       question: "Itäblokin pääesikunta jätti virallisen nootin: 'Lentotukialustenne läsnäolo lähimereillämme on suora sotilaallinen uhka. Vaadimme välitöntä vetäytymistä!'",
       options: [
-        { text: "Myönnytään ja siirretään laivueet kauemmas (Kriisi -20%, Kannatus -10%)", crisisEffect: -20, resourceEffect: -5, approvalEffect: -10, reply: "Vihollinen huokaisi helpotuksesta. Jännitteet laantuivat, mutta media arvosteli perääntymistä." },
-        { text: "Hylätään nootti ja korotetaan merivalvontaa (Kriisi +25%, Kannatus +10%)", crisisEffect: 25, resourceEffect: 0, approvalEffect: 10, reply: "Tiukka linja nosti kansan itsetuntoa, mutta vihollinen asetti armeijansa hälytystilaan!" },
-        { text: "Kutsutaan vihollisen suurlähettiläs kuultavaksi kompromissista (Kriisi -5%)", crisisEffect: -5, resourceEffect: 0, approvalEffect: 2, reply: "Diplomaattinen kädenvääntö jatkuu ilman suuria muutoksia." }
+        { text: "Myönnytään ja siirretään laivueet kauemmas", crisisEffect: -20, resourceEffect: -5, approvalEffect: -10, reply: "Vihollinen huokaisi helpotuksesta. Jännitteet laantuivat, mutta media arvosteli perääntymistä." },
+        { text: "Hylätään nootti ja korotetaan merivalvontaa", crisisEffect: 25, resourceEffect: 0, approvalEffect: 10, reply: "Tiukka linja nosti kansan itsetuntoa, mutta vihollinen asetti armeijansa hälytystilaan!" },
+        { text: "Kutsutaan vihollisen suurlähettiläs kuultavaksi kompromissista", crisisEffect: -5, resourceEffect: 0, approvalEffect: 2, reply: "Diplomaattinen kädenvääntö jatkuu ilman suuria muutoksia." }
       ]
     },
     {
-      title: "VIHOLLISEN PROVOKAATIO // SOTILAALLINEN JULISTUS",
-      question: "Vihollinen teki massiivisen ydinkokeen pohjoisella merialueella ja ilmoitti: 'Murtumaton mahdimme suojelee kansamme tulevaisuutta!' Miten vastataan?",
+      title: "YDINAKTIIVISUUS // POHJOINEN NAPA-ALUE",
+      question: "Vihollinen teki massiivisen ydinkokeen ja ilmoitti: 'Murtumaton mahdimme suojelee kansamme tulevaisuutta!' Miten vastataan?",
       options: [
-        { text: "Tuomitaan koe YK:ssa ja aloitetaan oma ydinkoe (Kriisi +20%, Kannatus +8%)", crisisEffect: 20, resourceEffect: -10, approvalEffect: 8, reply: "Voimannäyttö vastattiin voimalla! Varustelukilpailu kiihtyy." },
-        { text: "Ehdotetaan molemminpuolista ilmakehäkokeiden kieltoa (Kriisi -15%)", crisisEffect: -15, resourceEffect: +5, approvalEffect: 12, reply: "Rauhanaloite sai kansainvälistä tukea ja laski kriisitasoa." },
-        { text: "Sivuutetaan julistus ja keskitytään talouden vahvistamiseen", crisisEffect: -5, resourceEffect: +10, approvalEffect: -4, reply: "Pragmaattinen valinta säästi varoja." }
+        { text: "Tuomitaan koe YK:ssa ja aloitetaan oma vastakoe", crisisEffect: 20, resourceEffect: -10, approvalEffect: 8, reply: "Voimannäyttö vastattiin voimalla! Varustelukilpailu kiihtyy." },
+        { text: "Ehdotetaan molemminpuolista ilmakehäkokeiden kieltoa", crisisEffect: -15, resourceEffect: +5, approvalEffect: 12, reply: "Rauhanaloite sai kansainvälistä tukea ja laski kriisitasoa." },
+        { text: "Sivuutetaan julistus ja keskitetään varat talouteen", crisisEffect: -5, resourceEffect: +10, approvalEffect: -4, reply: "Pragmaattinen valinta säästi resursseja." }
       ]
     },
     {
-      title: "SUORA PUNAINEN PUHELIN // RAJAKRIISI",
-      question: "Vihollisvaltio ilmoittaa havainneensa vakoilukoneemme ilmatilassaan: 'Tämä on törkeä ilmatilan loukkaus. Pyytäkää julkisesti anteeksi tai vastaatte seurauksista!'",
+      title: "VAKOILUSKANDAALI // PUNAINEN PUHELIN",
+      question: "Vakoilupalvelumme agentti jäi kiinni vihollisen pääkaupungissa. Naapuri vaatii julkista nöyryytystä ja tunnustusta.",
       options: [
-        { text: "Esitetään julkinen valittelu ja kutsutaan koneet kotiin (Kriisi -25%)", crisisEffect: -25, resourceEffect: 0, approvalEffect: -12, reply: "Anteeksipyyntö esti konfliktin syttymisen, mutta heikensi vaalikannatusta." },
-        { text: "Kielletään syytökset ja syytetään vihollista lavastuksesta (Kriisi +30%)", crisisEffect: 30, resourceEffect: 0, approvalEffect: 15, reply: "Sotaisat puheet nostivat koti-ikävää kärsivien kannatusta, mutta sota oli hiuskarvan varassa!" },
-        { text: "Ehdotetaan riippumatonta kansainvälistä tutkintaa (Kriisi -10%)", crisisEffect: -10, resourceEffect: -5, approvalEffect: 5, reply: "Diplomaattinen viivytystaktiika tyynnytti pahoimmat höyryt." }
+        { text: "Kiistetään kaikki väitteet härskisti televisiossa", crisisEffect: +20, resourceEffect: 0, approvalEffect: 6, reply: "Kansa tykkää päättäväisyydestä, mutta Moskova raivostui!" },
+        { text: "Välitetään kulissien takana salainen vankienvaihto", crisisEffect: -10, resourceEffect: -5, approvalEffect: 2, reply: "Tilanne ratkaistiin hiljaisesti ilman mediakohua." },
+        { text: "Myönnetään vakoilu avoimesti ja vaaditaan agentille armahdusta", crisisEffect: +5, resourceEffect: 0, approvalEffect: -8, reply: "Avoin myöntttäminen nähtiin heikkoutena kotimaassa." }
+      ]
+    },
+    {
+      title: "AVARUUSKILPA // TEKNOLOGINEN YLLÄTYS",
+      question: "Vihollinen ampui onnistuneesti maailman ensimmäisen satelliitin kiertoradalle! Kansakunta vaatii välitöntä vastausta.",
+      options: [
+        { text: "Kaksinkertaistetaan avaruusohjelman budjetti hinnalla millä hyvänsä", crisisEffect: -5, resourceEffect: -20, approvalEffect: 18, reply: "Tiedeohjelmalle annettiin massiivinen lisärahoitus. Tiede piiputtaa, mutta kansa hurraa!" },
+        { text: "Vähätellään satelliitin merkitystä pelkkänä metallikikkareena", crisisEffect: +15, resourceEffect: 0, approvalEffect: -10, reply: "Vähättely herätti pelkoa teknologisesta takamatkasta." },
+        { text: "Ehdotetaan yhteistä kansainvälistä tiedepaneelia", crisisEffect: -20, resourceEffect: -5, approvalEffect: 5, reply: "Yhteistyöavaus laski jännitteitä yllättävän tehokkaasti." }
       ]
     }
   ];
 
+  // Laajennettu valikoima valtioneuvoston istunnon kysymyksiä
   const cabinetQuestions: DiplomacyQuestion[] = [
     {
-      title: "VIRKAASTUMINEN // STRATEGINEN DOKTRIINI",
-      question: "Herra presidentti, teille on esitetty ensimmäinen turvallisuuspoliittinen linjaus. Mihin asehaarajuoni budjetti keskitetään?",
+      title: "STRATEGINEN DOKTRIINI // BUDJETTI",
+      question: "Herra presidentti, teille on esitetty ensimmäinen turvallisuuspoliittinen linjaus. Mihin asetuotannon budjetti keskitetään?",
       options: [
-        { text: "A) Pommittajalaivueiden massiivinen laajennus", crisisEffect: 20, resourceEffect: -10, approvalEffect: 12, reply: "Pommittajaohjelma sai kansoilta suuren suosion, mutta vihollinen tulkitsee sen provokaatioksi!" },
-        { text: "B) Sukellusveneohjelman kiihdyttäminen merillä", crisisEffect: 0, resourceEffect: -10, approvalEffect: 5, reply: "Ydinsukellusveneet upotetaan syvyyksiin turvaamaan vastaiskukykyä." },
-        { text: "C) Puolustuksellinen linja: Tutkaverkot ja ABM-torjunta", crisisEffect: -10, resourceEffect: -5, approvalEffect: 15, reply: "Kansa ilahtui rauhanomaisemmasta puolustuslinjasta. Jännitteet laskivat." }
+        { text: "Pommittajalaivueiden massiivinen laajennus", crisisEffect: 20, resourceEffect: -10, approvalEffect: 12, reply: "Pommittajaohjelma sai kansoilta suuren suosion, mutta vihollinen tulkitsee sen provokaatioksi!" },
+        { text: "Sukellusveneohjelman kiihdyttäminen syvänmeren vesille", crisisEffect: 0, resourceEffect: -10, approvalEffect: 5, reply: "Ydinsukellusveneet upotetaan syvyyksiin turvaamaan vastaiskukykyä." },
+        { text: "Puolustuksellinen linja: Tutkaverkot ja ABM-torjunta", crisisEffect: -10, resourceEffect: -5, approvalEffect: 15, reply: "Kansa ilahtui rauhanomaisemmasta puolustuslinjasta. Jännitteet laskivat." }
       ]
     },
     {
-      title: "BERLIININ SAARTO // ULKOPOLITIIKKA",
-      question: "Vihollinen sulkee maayhteydet sektoriimme. Miten reagoimme kriisiin?",
+      title: "BERLIININ SAARTO // HUOLTOYHTEYDET",
+      question: "Vihollinen sulkee maayhteydet sektoriimme. Miten reagoimme saartoon?",
       options: [
-        { text: "Järjestetään massiivinen ilmasilta ja vältetään yhteenotto.", crisisEffect: -15, resourceEffect: -10, approvalEffect: 8, reply: "Ilmasilta onnistui loistavasti! Kannatus nousi." },
-        { text: "Vaaditaan reitin avaamista asevoimin uhaten.", crisisEffect: +30, resourceEffect: +10, approvalEffect: -5, reply: "Uhkaava kanta nosti kriisiprosenttia rajusti!" },
-        { text: "Vetäydytään hiljaisesti kiistellyltä alueelta.", crisisEffect: -25, resourceEffect: -5, approvalEffect: -15, reply: "Peräännyitte neuvottelupöydässä, mikä laski kansan luottamusta hallitukseen." }
+        { text: "Järjestetään massiivinen ilmasilta ja vältetään yhteenotto", crisisEffect: -15, resourceEffect: -10, approvalEffect: 8, reply: "Ilmasilta onnistui loistavasti! Kannatus nousi." },
+        { text: "Vaaditaan reitin avaamista panssarivoimin uhaten", crisisEffect: +30, resourceEffect: +10, approvalEffect: -5, reply: "Uhkaava kanta nosti kriisiprosenttia rajusti!" },
+        { text: "Vetäydytään hiljaisesti kiistellyltä alueelta", crisisEffect: -25, resourceEffect: -5, approvalEffect: -15, reply: "Peräännyitte neuvottelupöydässä, mikä laski kansan luottamusta hallitukseen." }
+      ]
+    },
+    {
+      title: "TALOUSPOLITIIKKA // MAATALOUS JA TEOLLISUUS",
+      question: "Kotimaan teollisuusliitot vaativat suurempaa siivua valtion budjetista palkkojen korotuksiin, mutta puolustusministeriö vastustaa.",
+      options: [
+        { text: "Siirretään varoja sotilasbudjetista työläisille", crisisEffect: -10, resourceEffect: -10, approvalEffect: 15, reply: "Ay-liike kiittää, mutta kenraalit mutisevat tyytymättöminä." },
+        { text: "Tuetaan puolustusteollisuutta kansallisen turvallisuuden nimissä", crisisEffect: +10, resourceEffect: +10, approvalEffect: -8, reply: "Tehtaat jylläävät, mutta kansan tyytymisyys kärsii." },
+        { text: "Otetaan valtionvelkaa ja tyydytetään molempia", crisisEffect: 0, resourceEffect: -15, approvalEffect: 10, reply: "Kompromissi maksoi paljon resursseja, mutta rauhoitti tilanteen." }
+      ]
+    },
+    {
+      title: "PROPAGANDAKAMPANJA // TIEDONVÄLITYS",
+      question: "Valtion media pyuaa lupaa aloittaa laajan kansainvälisen vastapropagandakampanjan vihollisen hallintoa vastaan.",
+      options: [
+        { text: "Hyväksytään aggressiivinen kampanja ja totuuden vääristely", crisisEffect: +20, resourceEffect: -5, approvalEffect: 10, reply: "Kampanja puri kansaamme, mutta vihollinen vastasi omalla kurituksellaan." },
+        { text: "Keskitytään vain omien saavutusten rehelliseen esittelyyn", crisisEffect: -5, resourceEffect: 0, approvalEffect: 5, reply: "Rauhallinen tiedotuslinja sai maltilliset kiitokset." },
+        { text: "Kielletään koko hanke turhana resurssien tuhlauksena", crisisEffect: -10, resourceEffect: +5, approvalEffect: -5, reply: "Säästitte varoja, mutta kriitikot pitävät hallitusta saamattomana." }
       ]
     }
   ];
@@ -173,8 +200,10 @@ export default function App() {
       setYear((prevYear) => {
         const nextYear = prevYear + 1;
 
+        // Joka 2. vuosi arvotaan satunnainen vihollisen nootti tai selkkaus
         if (nextYear % 2 === 0 && defcon > 1) {
-          setCurrentDeclIndex((prev) => (prev + 1) % enemyDeclarations.length);
+          const randomIdx = Math.floor(Math.random() * enemyDeclarations.length);
+          setCurrentDeclIndex(randomIdx);
           setGamePhase('enemyDeclaration');
         }
 
@@ -398,14 +427,12 @@ export default function App() {
         ctx.fillStyle = '#03060a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
-      // Piirretään pelaajan siilo
       ctx.fillStyle = '#00ffff';
       ctx.fillRect(playerSiloPos.x - 7, playerSiloPos.y - 7, 14, 14);
       ctx.font = '10px Courier New';
       ctx.fillStyle = '#00ffff';
       ctx.fillText(`PÄÄMAJA / SIILO (Taso ${techLevel})`, playerSiloPos.x - 45, playerSiloPos.y - 10);
 
-      // Piirretään pelaajan kaupungit
       playerCities.forEach(city => {
         ctx.fillStyle = city.alive ? '#00ffff' : '#555555';
         ctx.beginPath(); ctx.arc(city.x, city.y, city.alive ? 6 : 4, 0, Math.PI * 2); ctx.fill();
@@ -414,14 +441,12 @@ export default function App() {
         ctx.fillText(city.name, city.x - 15, city.y - 8);
       });
 
-      // Piirretään vihollisen siilo
       ctx.fillStyle = '#ff3333';
       ctx.fillRect(enemySiloPos.x - 7, enemySiloPos.y - 7, 14, 14);
       ctx.font = '10px Courier New';
       ctx.fillStyle = '#ff3333';
       ctx.fillText(`VIHOLLISEN SIILO (Taso ${enemyTechLevel})`, enemySiloPos.x - 45, enemySiloPos.y - 10);
 
-      // Piirretään vihollisen kaupungit
       enemyCities.forEach(city => {
         ctx.fillStyle = city.alive ? '#ff3333' : '#555555';
         ctx.beginPath(); ctx.arc(city.x, city.y, city.alive ? 6 : 4, 0, Math.PI * 2); ctx.fill();
