@@ -76,8 +76,8 @@ export default function App() {
 
   const [hoveredBtn, setHoveredBtn] = useState<string | null>(null);
 
-  // Pelin vaiheet: 'inauguration' (virkaanastujaiset) | 'game' (peli/kartta) | 'diplomacy' (paperien allekirjoitus)
-  const [gamePhase, setGamePhase] = useState<'inauguration' | 'game' | 'diplomacy'>('inauguration');
+  // Pelin vaiheet: 'inauguration' | 'game' | 'diplomacy' | 'enemyDeclaration'
+  const [gamePhase, setGamePhase] = useState<'inauguration' | 'game' | 'diplomacy' | 'enemyDeclaration'>('inauguration');
 
   const playerSiloPos = { x: 260, y: 165 };
   const [playerCities, setPlayerCities] = useState<City[]>([
@@ -101,7 +101,39 @@ export default function App() {
   const [gameOver, setGameOver] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("HERRA PRESIDENTTI: Astuit juuri virkaasi. Tarkastele valtion arsenaalia ja aloita virkakausi.");
 
-  const questionsList: DiplomacyQuestion[] = [
+  // Vihollisen suorat julistukset ja nootit
+  const enemyDeclarations: DiplomacyQuestion[] = [
+    {
+      title: "VIHOLLISEN UHKAVAATIMUS // NOOTTI",
+      question: "Itäblokin pääesikunta jätti virallisen nootin: 'Lentotukialustenne läsnäolo lähimereillämme on suora sotilaallinen uhka. Vaadimme välitöntä vetäytymistä!'",
+      options: [
+        { text: "Myönnytään ja siirretään laivueet kauemmas (Kriisi -20%, Kannatus -10%)", crisisEffect: -20, resourceEffect: -5, approvalEffect: -10, reply: "Vihollinen huokaisi helpotuksesta. Jännitteet laantuivat, mutta media arvosteli perääntymistä." },
+        { text: "Hylätään nootti ja korotetaan merivalvontaa (Kriisi +25%, Kannatus +10%)", crisisEffect: 25, resourceEffect: 0, approvalEffect: 10, reply: "Tiukka linja nosti kansan itsetuntoa, mutta vihollinen asetti armeijansa hälytystilaan!" },
+        { text: "Kutsutaan vihollisen suurlähettiläs kuultavaksi kompromissista (Kriisi -5%)", crisisEffect: -5, resourceEffect: 0, approvalEffect: 2, reply: "Diplomaattinen kädenvääntö jatkuu ilman suuria muutoksia." }
+      ]
+    },
+    {
+      title: "VIHOLLISEN PROVOKAATIO // SOTILAALLINEN JULISTUS",
+      question: "Vihollinen teki massiivisen ydinkokeen pohjoisella merialueella ja ilmoitti: 'Murtumaton mahdimme suojelee kansamme tulevaisuutta!' Miten vastataan?",
+      options: [
+        { text: "Tuomitaan koe YK:ssa ja aloitetaan oma ydinkoe (Kriisi +20%, Kannatus +8%)", crisisEffect: 20, resourceEffect: -10, approvalEffect: 8, reply: "Voimannäyttö vastattiin voimalla! Varustelukilpailu kiihtyy." },
+        { text: "Ehdotetaan molemminpuolista ilmakehäkokeiden kieltoa (Kriisi -15%)", crisisEffect: -15, resourceEffect: +5, approvalEffect: 12, reply: "Rauhanaloite sai kansainvälistä tukea ja laski kriisitasoa." },
+        { text: "Sivuutetaan julistus ja keskitytään talouden vahvistamiseen", crisisEffect: -5, resourceEffect: +10, approvalEffect: -4, reply: "Pragmaattinen valinta säästi varoja." }
+      ]
+    },
+    {
+      title: "SUORA PUNAINEN PUHELIN // RAJAKRIISI",
+      question: "Vihollisvaltio ilmoittaa havainneensa vakoilukoneemme ilmatilassaan: 'Tämä on törkeä ilmatilan loukkaus. Pyytäkää julkisesti anteeksi tai vastaatte seurauksista!'",
+      options: [
+        { text: "Esitetään julkinen valittelu ja kutsutaan koneet kotiin (Kriisi -25%)", crisisEffect: -25, resourceEffect: 0, approvalEffect: -12, reply: "Anteeksipyyntö esti konfliktin syttymisen, mutta heikensi vaalikannatusta." },
+        { text: "Kielletään syytökset ja syytetään vihollista lavastuksesta (Kriisi +30%)", crisisEffect: 30, resourceEffect: 0, approvalEffect: 15, reply: "Sotaisat puheet nostivat koti-ikävää kärsivien kannatusta, mutta sota oli hiuskarvan varassa!" },
+        { text: "Ehdotetaan riippumatonta kansainvälistä tutkintaa (Kriisi -10%)", crisisEffect: -10, resourceEffect: -5, approvalEffect: 5, reply: "Diplomaattinen viivytystaktiika tyynnytti pahoimmat höyryt." }
+      ]
+    }
+  ];
+
+  // Normaalit valtioneuvoston kysymykset
+  const cabinetQuestions: DiplomacyQuestion[] = [
     {
       title: "VIRKAASTUMINEN // STRATEGINEN DOKTRIINI",
       question: "Herra presidentti, teille on esitetty ensimmäinen turvallisuuspoliittinen linjaus. Mihin asehaarajuoni budjetti keskitetään?",
@@ -119,29 +151,11 @@ export default function App() {
         { text: "Vaaditaan reitin avaamista asevoimin uhaten.", crisisEffect: +30, resourceEffect: +10, approvalEffect: -5, reply: "Uhkaava kanta nosti kriisiprosenttia rajusti!" },
         { text: "Vetäydytään hiljaisesti kiistellyltä alueelta.", crisisEffect: -25, resourceEffect: -5, approvalEffect: -15, reply: "Peräännyitte neuvottelupöydässä, mikä laski kansan luottamusta hallitukseen." }
       ]
-    },
-    {
-      title: "TIEDUSTELURAPORTTI // SALAISET OPERAATIOT",
-      question: "CIA raportoi vihollisen uudesta salaisesta ohjastukikohdasta. Miten toimitetaan?",
-      options: [
-        { text: "Aloitetaan laajamittainen salainen sabotaasioperaatio.", crisisEffect: +15, resourceEffect: -15, approvalEffect: 6, reply: "Sabotaasi viivästytti vihollista, mutta herätti epäluuloja." },
-        { text: "Vuodetaan tiedot kansainväliselle medialle ja paljastetaan uhka.", crisisEffect: -5, resourceEffect: 0, approvalEffect: 10, reply: "Kansa arvostaa avoimuutta. Vihollisen propaganda menetti tehonsa." },
-        { text: "Ei reagoida, annetaan tilanteen rauhoittua itsestään.", crisisEffect: -10, resourceEffect: +5, approvalEffect: -4, reply: "Tilanne pysyi vakaana, mutta kriitikot pitävät hallitusta heikkona." }
-      ]
-    },
-    {
-      title: "ASERIISUNTASOPIMUS // DIPLOMATIA",
-      question: "Kansainväliset rauhanjärjestöt vaativat vastavuoroista ohjusriisuntaa.",
-      options: [
-        { text: "Allekirjoitetaan sopimus ja vähennetään jännitteitä radikaalisti.", crisisEffect: -35, resourceEffect: +10, approvalEffect: 14, reply: "Historiallinen rauhansopimus solmittu! Kriisi laski merkittävästi." },
-        { text: "Hylätään sopimus teeskennellen vihollisen epärehellisyyttä.", crisisEffect: +15, resourceEffect: -5, approvalEffect: -8, reply: "Sotaosapuolet pettyivät. Jännitteet kiristyivät." },
-        { text: "Vaaditaan ylimääräisiä tarkastuksia, jotka vihollinen hylkää.", crisisEffect: +5, resourceEffect: 0, approvalEffect: 4, reply: "Neuvottelut ajautuivat umpikujaan." }
-      ]
     }
   ];
 
   const [currentQIndex, setCurrentQIndex] = useState<number>(0);
-  const currentQ = questionsList[currentQIndex];
+  const [currentDeclIndex, setCurrentDeclIndex] = useState<number>(0);
 
   const missilesRef = useRef<MissileData[]>([]);
   const explosionsRef = useRef<ExplosionData[]>([]);
@@ -154,16 +168,24 @@ export default function App() {
     img.onload = () => { mapImageRef.current = img; };
   }, []);
 
+  // Ajan kuluminen ja vihollisen julistusten aktivoituminen
   useEffect(() => {
     const interval = setInterval(() => {
       if (gameOver || gamePhase !== 'game') return;
 
       setYear((prevYear) => {
         const nextYear = prevYear + 1;
+
+        // Joka 2. vuosi vihollinen antaa uuden julistuksen tai nootin!
+        if (nextYear % 2 === 0 && defcon > 1) {
+          setCurrentDeclIndex((prev) => (prev + 1) % enemyDeclarations.length);
+          setGamePhase('enemyDeclaration');
+        }
+
         if (nextYear % 3 === 0 && defcon > 1) {
           setEnemyTechLevel((t) => Math.min(3, t + 1));
           setCrisisLevel((c) => {
-            const nextC = c + 15;
+            const nextC = c + 10;
             if (nextC >= 100) {
               setDefcon(1);
               setMessage("HÄLYTYS: Vuosi on " + nextYear + "! Tilanne on kärjistynyt DEFCON 1 -ydinsodaksi!");
@@ -179,7 +201,7 @@ export default function App() {
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [gameOver, defcon, gamePhase]);
+  }, [gameOver, defcon, gamePhase, enemyDeclarations.length]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -509,7 +531,7 @@ export default function App() {
     setMessage(reply);
     setResources((prev) => Math.max(0, prev + resourceEffect));
     setApprovalRating((prev) => Math.max(0, Math.min(100, prev + approvalEffect)));
-    setGamePhase('game'); // Siirrytään takaisin karttanäkymään paperien allekirjoituksen jälkeen
+    setGamePhase('game');
 
     setCrisisLevel((prev) => {
       const nextCrisis = Math.max(0, Math.min(100, prev + crisisEffect));
@@ -521,7 +543,9 @@ export default function App() {
       return nextCrisis;
     });
 
-    setCurrentQIndex((prev) => (prev + 1) % questionsList.length);
+    if (gamePhase === 'diplomacy') {
+      setCurrentQIndex((prev) => (prev + 1) % cabinetQuestions.length);
+    }
   };
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -593,6 +617,8 @@ export default function App() {
   };
 
   const playerAliveCount = playerCities.filter(c => c.alive).length;
+  const currentDecl = enemyDeclarations[currentDeclIndex];
+  const currentCab = cabinetQuestions[currentQIndex];
 
   return (
       <div style={{ backgroundColor: '#05080f', color: '#00ffcc', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'Courier New, monospace', margin: 0, padding: '20px', position: 'relative' }}>
@@ -665,7 +691,7 @@ export default function App() {
           <p style={{ margin: 0, fontWeight: 'bold' }}>{message}</p>
         </div>
 
-        {/* 1. VIRKAASTUJAISRUUTU (NÄKYY PELIN ALUSSA) */}
+        {/* 1. VIRKAASTUJAISRUUTU */}
         {gamePhase === 'inauguration' && !gameOver && (
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(2, 5, 12, 0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20 }}>
               <div style={{ width: '680px', backgroundColor: '#0b1626', border: '2px solid #00ffcc', borderRadius: '8px', padding: '30px', boxShadow: '0 0 40px rgba(0, 255, 204, 0.35)' }}>
@@ -684,7 +710,7 @@ export default function App() {
                     <li><strong>Strategiset pommittajat:</strong> 2 laivuetta valmiudessa</li>
                     <li><strong>Ydinsukellusveneet:</strong> 1 alus merialueilla</li>
                   </ul>
-                  <p style={{ margin: '10px 0 0 0' }}>Kylmä sota on alkanut. Seuraavaksi teidän on astuttava työhuoneeseen ja allekirjoitettava ensimmäiset virkamääräykset ja ulkopoliittiset sopimukset.</p>
+                  <p style={{ margin: '10px 0 0 0' }}>Kylmä sota on alkanut. Seuraavaksi teidän on astuttava työhuoneeseen ja allekirjoitettava ensimmäiset virkamääräykset.</p>
                 </div>
 
                 <button
@@ -707,7 +733,55 @@ export default function App() {
             </div>
         )}
 
-        {/* 2. DIPLOMATIAMODAALI (PAPERIEN ALLEKIRJOITUS) */}
+        {/* 2. VIHOLLISEN NOOTTI JA JULISTUS -MODAALI */}
+        {gamePhase === 'enemyDeclaration' && !gameOver && (
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(25, 2, 5, 0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 15 }}>
+              <div style={{ width: '640px', backgroundColor: '#1a0808', border: '2px solid #ff3333', borderRadius: '8px', padding: '24px', boxShadow: '0 0 35px rgba(255, 51, 51, 0.4)' }}>
+
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '15px' }}>
+                  <div style={{ width: '70px', height: '70px', border: '2px solid #ff3333', borderRadius: '6px', backgroundColor: '#330505', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '32px' }}>
+                    🚨
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '13px', color: '#ff3333', fontWeight: 'bold' }}>{currentDecl.title}</div>
+                    <div style={{ fontSize: '15px', color: '#ffffff', fontWeight: 'bold' }}>SÄHKE MOSKOVASTA</div>
+                  </div>
+                </div>
+
+                <p style={{ fontSize: '14px', color: '#ffcccc', fontStyle: 'italic', marginBottom: '20px', background: '#0a0202', padding: '14px', borderRadius: '4px', borderLeft: '3px solid #ff3333', lineHeight: '1.4' }}>
+                  "{currentDecl.question}"
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '15px' }}>
+                  {currentDecl.options.map((opt, idx) => {
+                    const optionKey = `decl-opt-${idx}`;
+                    const isHovered = hoveredBtn === optionKey;
+                    return (
+                        <button
+                            key={idx}
+                            onClick={() => handleAnswer(opt.crisisEffect, opt.resourceEffect, opt.approvalEffect, opt.reply)}
+                            onMouseEnter={() => setHoveredBtn(optionKey)}
+                            onMouseLeave={() => setHoveredBtn(null)}
+                            style={{
+                              ...optionBtnStyle,
+                              backgroundColor: isHovered ? '#4d1010' : '#140303',
+                              borderColor: isHovered ? '#ff6666' : '#591a1a',
+                              color: isHovered ? '#ffffff' : '#ff9999',
+                              boxShadow: isHovered ? '0 0 12px rgba(255, 51, 51, 0.4)' : 'none',
+                              transform: isHovered ? 'translateX(5px)' : 'none'
+                            }}
+                        >
+                          › {opt.text}
+                        </button>
+                    );
+                  })}
+                </div>
+
+              </div>
+            </div>
+        )}
+
+        {/* 3. NORMALI VALTIONEUVOSTON ISTUNTO -MODAALI */}
         {gamePhase === 'diplomacy' && !gameOver && (
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(2, 5, 12, 0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
               <div style={{ width: '640px', backgroundColor: '#0b1626', border: '2px solid #00aaff', borderRadius: '8px', padding: '24px', boxShadow: '0 0 35px rgba(0, 170, 255, 0.35)' }}>
@@ -717,17 +791,17 @@ export default function App() {
                     🖊
                   </div>
                   <div>
-                    <div style={{ fontSize: '13px', color: '#00aaff', fontWeight: 'bold' }}>{currentQ.title}</div>
+                    <div style={{ fontSize: '13px', color: '#00aaff', fontWeight: 'bold' }}>{currentCab.title}</div>
                     <div style={{ fontSize: '15px', color: '#ffffff', fontWeight: 'bold' }}>Valtioneuvoston virkaasiakirjat</div>
                   </div>
                 </div>
 
                 <p style={{ fontSize: '14px', color: '#e0f7ff', fontStyle: 'italic', marginBottom: '20px', background: '#05080f', padding: '14px', borderRadius: '4px', borderLeft: '3px solid #00aaff', lineHeight: '1.4' }}>
-                  "{currentQ.question}"
+                  "{currentCab.question}"
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '15px' }}>
-                  {currentQ.options.map((opt, idx) => {
+                  {currentCab.options.map((opt, idx) => {
                     const optionKey = `opt-${idx}`;
                     const isHovered = hoveredBtn === optionKey;
                     return (
