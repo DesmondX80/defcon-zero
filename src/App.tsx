@@ -71,8 +71,8 @@ export default function App() {
   const [enemyTechLevel, setEnemyTechLevel] = useState<number>(1);
 
   const [approvalRating, setApprovalRating] = useState<number>(50);
-  const [bombers, setBombers] = useState<number>(2); // Strategiset pommittajat / ohjusvarastot
-  const [submarines, setSubmarines] = useState<number>(1); // Ydinsukellusveneet
+  const [bombers, setBombers] = useState<number>(2);
+  const [submarines, setSubmarines] = useState<number>(1);
 
   const [hoveredBtn, setHoveredBtn] = useState<string | null>(null);
   const [gamePhase, setGamePhase] = useState<'inauguration' | 'game' | 'diplomacy' | 'enemyDeclaration'>('inauguration');
@@ -91,7 +91,7 @@ export default function App() {
     { id: 'ec3', name: 'Novosibirsk', x: 708, y: 148, hp: 100, alive: true }
   ]);
 
-  const [playerABM, setPlayerABM] = useState<number>(5); // Puolustusohjukset
+  const [playerABM, setPlayerABM] = useState<number>(5);
   const [resources, setResources] = useState<number>(25);
 
   const [defcon, setDefcon] = useState<number>(3);
@@ -345,12 +345,12 @@ export default function App() {
             }
           }
         } else {
-          const linearX = m.startX + (m.targetX - m.targetX) * t; // Korjattu arc
+          const linearX = m.startX + (m.targetX - m.startX) * t;
           const linearY = m.startY + (m.targetY - m.startY) * t;
           const arcHeight = m.isInterceptor ? 30 : 120;
           const arcY = Math.sin(t * Math.PI) * arcHeight;
 
-          m.currentX = m.startX + (m.targetX - m.startX) * t;
+          m.currentX = linearX;
           m.currentY = linearY - arcY;
 
           m.trail.push({ x: m.currentX, y: m.currentY, alpha: 1.0 });
@@ -577,7 +577,6 @@ export default function App() {
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
 
-    // Jos klikataan omaa aluetta / puolustusta -> Tarkistetaan riittääkö ABM / puolustusvarasto
     if (clickX < 500) {
       if (playerABM <= 0) {
         setMessage("EI TORJUNTAOHJUKSIA: Puolustusvarasto on tyhjä! Rakenna tai kehitä lisää kalustoa.");
@@ -595,13 +594,11 @@ export default function App() {
       });
       setMessage(`ABM-torjuntaohjus laukaistu. Jäljellä olevat puolustukset: ${playerABM - 1}`);
     } else {
-      // Hyökkäys vihollisen alueelle -> Kuluttaa pommittajia tai sukellusveneitä (vähintään toista pitää olla)
       if (bombers <= 0 && submarines <= 0) {
         setMessage("ARSENAALI TYHJÄ: Sinulla ei ole yhtään pommittajalaivuetta tai sukellusvenetta jäljellä iskuun!");
         return;
       }
 
-      // Kulutetaan ensisijaisesti pommittaja, tai sukellusvene
       if (bombers > 0) {
         setBombers((b) => b - 1);
         setMessage(`Strateginen pommittajalaivue laukaistu kohteeseen. Jäljellä olevat pommittajat: ${bombers - 1}`);
@@ -728,7 +725,6 @@ export default function App() {
           <p style={{ margin: 0, fontWeight: 'bold' }}>{message}</p>
         </div>
 
-        {/* 1. VIRKAASTUJAISRUUTU */}
         {gamePhase === 'inauguration' && !gameOver && (
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(2, 5, 12, 0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20 }}>
               <div style={{ width: '680px', backgroundColor: '#0b1626', border: '2px solid #00ffcc', borderRadius: '8px', padding: '30px', boxShadow: '0 0 40px rgba(0, 255, 204, 0.35)' }}>
@@ -770,7 +766,6 @@ export default function App() {
             </div>
         )}
 
-        {/* 2. VIHOLLISEN NOOTTI JA JULISTUS -MODAALI */}
         {gamePhase === 'enemyDeclaration' && !gameOver && (
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(25, 2, 5, 0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 15 }}>
               <div style={{ width: '640px', backgroundColor: '#1a0808', border: '2px solid #ff3333', borderRadius: '8px', padding: '24px', boxShadow: '0 0 35px rgba(255, 51, 51, 0.4)' }}>
@@ -818,7 +813,6 @@ export default function App() {
             </div>
         )}
 
-        {/* 3. NORMALI VALTIONEUVOSTON ISTUNTO -MODAALI */}
         {gamePhase === 'diplomacy' && !gameOver && (
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(2, 5, 12, 0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
               <div style={{ width: '640px', backgroundColor: '#0b1626', border: '2px solid #00aaff', borderRadius: '8px', padding: '24px', boxShadow: '0 0 35px rgba(0, 170, 255, 0.35)' }}>
