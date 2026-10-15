@@ -79,8 +79,8 @@ export default function App() {
 
   const playerSiloPos = { x: 195, y: 165 };
   const [playerCities, setPlayerCities] = useState<City[]>([
-    { id: 'pc1', name: 'Washington', x: 235, y: 172, hp: 100, alive: true },
-    { id: 'pc2', name: 'New York', x: 245, y: 158, hp: 100, alive: true },
+    { id: 'pc1', name: 'New York', x: 245, y: 155, hp: 100, alive: true },     // New York ylempänä rannikolla
+    { id: 'pc2', name: 'Washington', x: 235, y: 175, hp: 100, alive: true },   // Washington alempana lounaassa
     { id: 'pc3', name: 'Los Angeles', x: 140, y: 182, hp: 100, alive: true }
   ]);
 
@@ -88,7 +88,7 @@ export default function App() {
   const [enemyCities, setEnemyCities] = useState<City[]>([
     { id: 'ec1', name: 'Moskova', x: 588, y: 132, hp: 100, alive: true },
     { id: 'ec2', name: 'Pietari', x: 578, y: 112, hp: 100, alive: true },
-    { id: 'ec3', name: 'Novosibirsk', x: 708, y: 148, hp: 100, alive: true }
+    { id: 'ec3', name: 'Novosibirsk', x: 708, y: 118, hp: 100, alive: true }   // Novosibirsk siirretty pohjoisemmaksi (y: 118)
   ]);
 
   const [playerABM, setPlayerABM] = useState<number>(5);
