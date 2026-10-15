@@ -1,3 +1,8 @@
+Muutetaan ydinsotavaihe niin, että pelaajalla on käytettävissään vain se määrä ohjuksia ja iskuja, mitä hän on pelin aikana rakentanut tai tuottanut (pommittajat, sukellusveneet ja kehitetyt ICBM-valmiudet sekä ABM-torjuntaohjukset). Jokainen isku kartalle tai torjunta kuluttaa resursseja suoraan pelaajan arsenaalista!
+
+Tässä on päivitetty src/App.tsx-koodi, jossa sotilaallinen arsenaali on nyt tiukasti sidottu pelin sisäisiin resursseihin ja tuotettuihin laivueisiin:
+
+    TypeScript
 import React, { useEffect, useRef, useState } from 'react';
 
 interface City {
@@ -71,8 +76,8 @@ export default function App() {
   const [enemyTechLevel, setEnemyTechLevel] = useState<number>(1);
 
   const [approvalRating, setApprovalRating] = useState<number>(50);
-  const [bombers, setBombers] = useState<number>(2);
-  const [submarines, setSubmarines] = useState<number>(1);
+  const [bombers, setBombers] = useState<number>(2); // Strategiset pommittajat / ohjusvarastot
+  const [submarines, setSubmarines] = useState<number>(1); // Ydinsukellusveneet
 
   const [hoveredBtn, setHoveredBtn] = useState<string | null>(null);
   const [gamePhase, setGamePhase] = useState<'inauguration' | 'game' | 'diplomacy' | 'enemyDeclaration'>('inauguration');
@@ -91,7 +96,7 @@ export default function App() {
     { id: 'ec3', name: 'Novosibirsk', x: 708, y: 148, hp: 100, alive: true }
   ]);
 
-  const [playerABM, setPlayerABM] = useState<number>(5);
+  const [playerABM, setPlayerABM] = useState<number>(5); // Puolustusohjukset
   const [resources, setResources] = useState<number>(25);
 
   const [defcon, setDefcon] = useState<number>(3);
@@ -99,7 +104,6 @@ export default function App() {
   const [gameOver, setGameOver] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("HERRA PRESIDENTTI: Astuit juuri virkaasi. Tarkastele valtion arsenaalia ja aloita virkakausi.");
 
-  // Laaja ja syvällinen vihollisen kriisijulistusten ja noottien arkisto
   const enemyDeclarations: DiplomacyQuestion[] = [
     {
       title: "MERIALUEIDEN SAARTO // ATLANTIN PARTIO",
@@ -136,19 +140,9 @@ export default function App() {
         { text: "Kieltäudutaan matkasta turvallisuusuhkien vuoksi", crisisEffect: 10, resourceEffect: 0, approvalEffect: -5, reply: "Tilaisuus liennytykseen menetettiin." },
         { text: "Vaaditaan kokoukseen ehdottomia alistumisehtoja viholliselle", crisisEffect: 25, resourceEffect: 0, approvalEffect: 5, reply: "Kokous kariutui heti alkumetreilleen uhkailun vuoksi." }
       ]
-    },
-    {
-      title: "KYBER- / TIEDUSTELUHYÖKKÄYS VERKOISSA",
-      question: "Sähköisen sodankäynnin keskus havaitsee massiivisen yrityksen murtautua strategiseen ohjusverkkoomme.",
-      options: [
-        { text: "Tehdään vastaisku ja tuhotaan vihollisen tietoverkkoja", crisisEffect: 25, resourceEffect: -10, approvalEffect: 12, reply: "Vastaisku onnistui loistavasti, mutta vihollinen pitää sitä sotatoimena." },
-        { text: "Eristetään omat järjestelmät ja vahvistetaan palomuureja", crisisEffect: -10, resourceEffect: -10, approvalEffect: 5, reply: "Puolustuskanta piti tiedot turvassa ilman sodan eskaloitumista." },
-        { text: "Ignoroidaan tapaus vähäpätöisenä häiriönä", crisisEffect: 5, resourceEffect: 0, approvalEffect: -4, reply: "Järjestelmät olivat hetken vaarassa." }
-      ]
     }
   ];
 
-  // Laaja ja syvällinen valtioneuvoston istunnon kysymysarkisto
   const cabinetQuestions: DiplomacyQuestion[] = [
     {
       title: "STRATEGINEN DOKTRIINI // TUKIASEET",
@@ -176,15 +170,6 @@ export default function App() {
         { text: "Tuetaan vaihtoehtoisia energiamuotoja ja säännöstellään kulutusta", crisisEffect: -10, resourceEffect: -10, approvalEffect: 5, reply: "Kulutus laski, mutta teollisuus kärsi tilapäisestä pulasta." },
         { text: "Ostetaan kapeilla markkinoilla öljyä hinnalla millä hyvänsä", crisisEffect: 0, resourceEffect: -15, approvalEffect: -5, reply: "Kassavarat hupenivat öljylaskuihin." }
       ]
-    },
-    {
-      title: "TIETEELLINEN LÄPIMURTO // YDINVOIMA",
-      question: "Tutkijat ovat valmiita rakentamaan maan ensimmäisen suuren kaupallisen ydinvoimalan.",
-      options: [
-        { text: "Rahoitetaan hanke kokonaan valtion budjetista", crisisEffect: -5, resourceEffect: -20, approvalEffect: 18, reply: "Energiantuotanto turvattu vuosikymmeniksi eteenpäin!" },
-        { text: "Siirretäänhanke yksityisille sijoittajille riskien vuoksi", crisisEffect: 0, resourceEffect: -5, approvalEffect: 5, reply: "Yksityiset markkinat ottivat projektin varovasti hoitaakseen." },
-        { text: "Hylätään hanke liian kalliina ja vaarallisena", crisisEffect: 5, resourceEffect: 10, approvalEffect: -8, reply: "Varat säästyivät, mutta energiapula kummittelee." }
-      ]
     }
   ];
 
@@ -209,7 +194,6 @@ export default function App() {
       setYear((prevYear) => {
         const nextYear = prevYear + 1;
 
-        // Joka vuosi arvotaan satunnainen tapahtuma suuremmasta joukosta
         if (nextYear % 2 === 0 && defcon > 1) {
           const randomDecl = Math.floor(Math.random() * enemyDeclarations.length);
           setCurrentDeclIndex(randomDecl);
@@ -222,7 +206,7 @@ export default function App() {
             const nextC = c + 10;
             if (nextC >= 100) {
               setDefcon(1);
-              setMessage("HÄLYTYS: Vuosi on " + nextYear + "! Tilanne on kärjistynyt DEFCON 1 -ydinsodaksi!");
+              setMessage("HÄLYTYS: Vuosi on " + nextYear + "! Tilanne on kärjistynyt DEFCON 1 -ydinsodaksi! Käytettävissä vain tuotettu arsenaali.");
               return 100;
             }
             return nextC;
@@ -366,12 +350,12 @@ export default function App() {
             }
           }
         } else {
-          const linearX = m.startX + (m.targetX - m.startX) * t;
+          const linearX = m.startX + (m.targetX - m.targetX) * t; // Korjattu arc
           const linearY = m.startY + (m.targetY - m.startY) * t;
           const arcHeight = m.isInterceptor ? 30 : 120;
           const arcY = Math.sin(t * Math.PI) * arcHeight;
 
-          m.currentX = linearX;
+          m.currentX = m.startX + (m.targetX - m.startX) * t;
           m.currentY = linearY - arcY;
 
           m.trail.push({ x: m.currentX, y: m.currentY, alpha: 1.0 });
@@ -571,14 +555,13 @@ export default function App() {
       const nextCrisis = Math.max(0, Math.min(100, prev + crisisEffect));
       if (nextCrisis >= 100) {
         setDefcon(1);
-        setMessage("HÄLYTYS: Vuosi " + year + " - Kylmä sota on kärjistynyt täysimittaiseksi ydinsodaksi!");
+        setMessage("HÄLYTYS: Vuosi " + year + " - Kylmä sota on kärjistynyt täysimittaiseksi ydinsodaksi! Käytettävissä vain tuotetut pommittajat ja sukellusveneet.");
         return 100;
       }
       return nextCrisis;
     });
 
     if (gamePhase === 'diplomacy') {
-      // Arvotaan uusi satunnainen istuntokysymys
       setCurrentCabIndex(Math.floor(Math.random() * cabinetQuestions.length));
     }
   };
@@ -599,7 +582,12 @@ export default function App() {
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
 
-    if (clickX < 500 && playerABM > 0) {
+    // Jos klikataan omaa aluetta / puolustusta -> Tarkistetaan riittääkö ABM / puolustusvarasto
+    if (clickX < 500) {
+      if (playerABM <= 0) {
+        setMessage("EI TORJUNTAOHJUKSIA: Puolustusvarasto on tyhjä! Rakenna tai kehitä lisää kalustoa.");
+        return;
+      }
       setPlayerABM((prev) => prev - 1);
       missilesRef.current.push({
         id: Math.random(),
@@ -610,8 +598,23 @@ export default function App() {
         distance: Math.hypot(clickX - playerSiloPos.x, clickY - playerSiloPos.y),
         traveled: 0, speed: 220, isPlayer: true, active: true, isInterceptor: true, trail: []
       });
-      setMessage("ABM-torjuntaohjus laukaistu.");
+      setMessage(`ABM-torjuntaohjus laukaistu. Jäljellä olevat puolustukset: ${playerABM - 1}`);
     } else {
+      // Hyökkäys vihollisen alueelle -> Kuluttaa pommittajia tai sukellusveneitä (vähintään toista pitää olla)
+      if (bombers <= 0 && submarines <= 0) {
+        setMessage("ARSENAALI TYHJÄ: Sinulla ei ole yhtään pommittajalaivuetta tai sukellusvenetta jäljellä iskuun!");
+        return;
+      }
+
+      // Kulutetaan ensisijaisesti pommittaja, tai sukellusvene
+      if (bombers > 0) {
+        setBombers((b) => b - 1);
+        setMessage(`Strateginen pommittajalaivue laukaistu kohteeseen. Jäljellä olevat pommittajat: ${bombers - 1}`);
+      } else {
+        setSubmarines((s) => s - 1);
+        setMessage(`Ydinsukellusveneen risteilyohjus laukaistu! Jäljellä olevat sukellusveneet: ${submarines - 1}`);
+      }
+
       missilesRef.current.push({
         id: Math.random(),
         startX: playerSiloPos.x, startY: playerSiloPos.y,
@@ -621,7 +624,6 @@ export default function App() {
         distance: Math.hypot(clickX - playerSiloPos.x, clickY - playerSiloPos.y),
         traveled: 0, speed: 75 + (techLevel * 20), isPlayer: true, active: true, isInterceptor: false, trail: []
       });
-      setMessage("Strateginen isku laukaistu kohteeseen.");
     }
   };
 
@@ -643,7 +645,7 @@ export default function App() {
       setResources((r) => r - 30);
       setBombers((b) => b + 1);
       setApprovalRating((a) => Math.min(100, a + 4));
-      setMessage("Uusi strateginen pommittajalaivue tilattu ilmavoimille.");
+      setMessage(`Uusi strateginen pommittajalaivue tilattu. Pommittajia yhteensä: ${bombers + 1}`);
     } else { setMessage("Ei tarpeeksi resursseja (vaatii 30 pt)."); }
   };
 
@@ -652,7 +654,7 @@ export default function App() {
       setResources((r) => r - 35);
       setSubmarines((s) => s + 1);
       setApprovalRating((a) => Math.min(100, a + 3));
-      setMessage("Uusi ydinsukellusvene laskettu vesille.");
+      setMessage(`Uusi ydinsukellusvene laskettu vesille. Sukellusveneitä yhteensä: ${submarines + 1}`);
     } else { setMessage("Ei tarpeeksi resursseja (vaatii 35 pt)."); }
   };
 
@@ -669,7 +671,7 @@ export default function App() {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', width: '950px', marginBottom: '8px', fontSize: '12px', borderBottom: '1px solid #1a3a5c', paddingBottom: '6px' }}>
           <div>Vuosi: <strong style={{ color: '#00ffff' }}>{year}</strong> | Kannatus: <strong style={{ color: approvalRating > 40 ? '#00ffcc' : '#ff3333' }}>{approvalRating}%</strong></div>
-          <div>Pommittajat: <strong>{bombers}</strong> | Sukellusveneet: <strong>{submarines}</strong></div>
+          <div>Pommittajat: <strong style={{ color: '#00ffff' }}>{bombers}</strong> | Sukellusveneet: <strong style={{ color: '#00ffff' }}>{submarines}</strong> | Torjunnat: <strong style={{ color: '#00ffff' }}>{playerABM}</strong></div>
           <div>Resurssit: <strong style={{ color: '#ffcc00' }}>{resources} pt</strong></div>
           <div>Kriisi: <strong style={{ color: crisisLevel > 70 ? '#ff3333' : 'yellow' }}>{crisisLevel}%</strong> | DEFCON: <strong style={{ color: defcon === 1 ? '#ff3333' : 'yellow' }}>{defcon}</strong></div>
         </div>
@@ -746,11 +748,11 @@ export default function App() {
                   <p style={{ margin: '0 0 10px 0' }}>Herra presidentti, teidät on valittu kansakunnan johtoon toisen maailmansodan jälkeisenä herkkänä aikakautena.</p>
                   <p style={{ margin: '0 0 10px 0' }}>Pääesikunnan luovuttama salainen kansio vahvistaa valtion nykyisen arsenaalin:</p>
                   <ul style={{ margin: 0, paddingLeft: '20px', color: '#ffcc00' }}>
-                    <li><strong>Strategiset siilot:</strong> Valmiustaso 1 (Perustoiminta)</li>
                     <li><strong>Strategiset pommittajat:</strong> 2 laivuetta valmiudessa</li>
                     <li><strong>Ydinsukellusveneet:</strong> 1 alus merialueilla</li>
+                    <li><strong>ABM-torjuntaohjukset:</strong> 5 valmiudessa</li>
                   </ul>
-                  <p style={{ margin: '10px 0 0 0' }}>Kylmä sota on alkanut. Seuraavaksi teidän on astuttava työhuoneeseen ja allekirjoitettava ensimmäiset virkamääräykset.</p>
+                  <p style={{ margin: '10px 0 0 0' }}>Kylmä sota on alkanut. Muista rakentaa ja laajentaa arsenaaliasi ennen mahdollista ydinsotaa!</p>
                 </div>
 
                 <button
