@@ -76,21 +76,21 @@ export default function App() {
 
   const [hoveredBtn, setHoveredBtn] = useState<string | null>(null);
 
-  // Pelin vaiheet: 'inauguration' | 'game' | 'diplomacy' | 'enemyDeclaration'
   const [gamePhase, setGamePhase] = useState<'inauguration' | 'game' | 'diplomacy' | 'enemyDeclaration'>('inauguration');
 
-  const playerSiloPos = { x: 260, y: 165 };
+  // Hienosäädetyt koordinaatit karttapohjan mukaisesti (950x420 canvas)
+  const playerSiloPos = { x: 235, y: 165 }; // Yhdysvaltojen sisämaa (Kansas/Nebraska)
   const [playerCities, setPlayerCities] = useState<City[]>([
-    { id: 'pc1', name: 'Washington', x: 305, y: 175, hp: 100, alive: true },
-    { id: 'pc2', name: 'New York', x: 315, y: 155, hp: 100, alive: true },
-    { id: 'pc3', name: 'Los Angeles', x: 190, y: 190, hp: 100, alive: true }
+    { id: 'pc1', name: 'Washington', x: 282, y: 172, hp: 100, alive: true },
+    { id: 'pc2', name: 'New York', x: 290, y: 158, hp: 100, alive: true },
+    { id: 'pc3', name: 'Los Angeles', x: 182, y: 182, hp: 100, alive: true }
   ]);
 
-  const enemySiloPos = { x: 720, y: 130 };
+  const enemySiloPos = { x: 670, y: 135 }; // Ural/Länsi-Siperia
   const [enemyCities, setEnemyCities] = useState<City[]>([
-    { id: 'ec1', name: 'Moskova', x: 620, y: 145, hp: 100, alive: true },
-    { id: 'ec2', name: 'Pietari', x: 595, y: 125, hp: 100, alive: true },
-    { id: 'ec3', name: 'Novosibirsk', x: 740, y: 155, hp: 100, alive: true }
+    { id: 'ec1', name: 'Moskova', x: 588, y: 132, hp: 100, alive: true },
+    { id: 'ec2', name: 'Pietari', x: 578, y: 112, hp: 100, alive: true },
+    { id: 'ec3', name: 'Novosibirsk', x: 708, y: 148, hp: 100, alive: true }
   ]);
 
   const [playerABM, setPlayerABM] = useState<number>(5);
@@ -101,7 +101,6 @@ export default function App() {
   const [gameOver, setGameOver] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("HERRA PRESIDENTTI: Astuit juuri virkaasi. Tarkastele valtion arsenaalia ja aloita virkakausi.");
 
-  // Vihollisen suorat julistukset ja nootit
   const enemyDeclarations: DiplomacyQuestion[] = [
     {
       title: "VIHOLLISEN UHKAVAATIMUS // NOOTTI",
@@ -132,7 +131,6 @@ export default function App() {
     }
   ];
 
-  // Normaalit valtioneuvoston kysymykset
   const cabinetQuestions: DiplomacyQuestion[] = [
     {
       title: "VIRKAASTUMINEN // STRATEGINEN DOKTRIINI",
@@ -168,7 +166,6 @@ export default function App() {
     img.onload = () => { mapImageRef.current = img; };
   }, []);
 
-  // Ajan kuluminen ja vihollisen julistusten aktivoituminen
   useEffect(() => {
     const interval = setInterval(() => {
       if (gameOver || gamePhase !== 'game') return;
@@ -176,7 +173,6 @@ export default function App() {
       setYear((prevYear) => {
         const nextYear = prevYear + 1;
 
-        // Joka 2. vuosi vihollinen antaa uuden julistuksen tai nootin!
         if (nextYear % 2 === 0 && defcon > 1) {
           setCurrentDeclIndex((prev) => (prev + 1) % enemyDeclarations.length);
           setGamePhase('enemyDeclaration');
@@ -402,12 +398,14 @@ export default function App() {
         ctx.fillStyle = '#03060a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
+      // Piirretään pelaajan siilo
       ctx.fillStyle = '#00ffff';
       ctx.fillRect(playerSiloPos.x - 7, playerSiloPos.y - 7, 14, 14);
       ctx.font = '10px Courier New';
       ctx.fillStyle = '#00ffff';
       ctx.fillText(`PÄÄMAJA / SIILO (Taso ${techLevel})`, playerSiloPos.x - 45, playerSiloPos.y - 10);
 
+      // Piirretään pelaajan kaupungit
       playerCities.forEach(city => {
         ctx.fillStyle = city.alive ? '#00ffff' : '#555555';
         ctx.beginPath(); ctx.arc(city.x, city.y, city.alive ? 6 : 4, 0, Math.PI * 2); ctx.fill();
@@ -416,12 +414,14 @@ export default function App() {
         ctx.fillText(city.name, city.x - 15, city.y - 8);
       });
 
+      // Piirretään vihollisen siilo
       ctx.fillStyle = '#ff3333';
       ctx.fillRect(enemySiloPos.x - 7, enemySiloPos.y - 7, 14, 14);
       ctx.font = '10px Courier New';
       ctx.fillStyle = '#ff3333';
       ctx.fillText(`VIHOLLISEN SIILO (Taso ${enemyTechLevel})`, enemySiloPos.x - 45, enemySiloPos.y - 10);
 
+      // Piirretään vihollisen kaupungit
       enemyCities.forEach(city => {
         ctx.fillStyle = city.alive ? '#ff3333' : '#555555';
         ctx.beginPath(); ctx.arc(city.x, city.y, city.alive ? 6 : 4, 0, Math.PI * 2); ctx.fill();
