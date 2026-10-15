@@ -1,8 +1,3 @@
-Muutetaan ydinsotavaihe niin, että pelaajalla on käytettävissään vain se määrä ohjuksia ja iskuja, mitä hän on pelin aikana rakentanut tai tuottanut (pommittajat, sukellusveneet ja kehitetyt ICBM-valmiudet sekä ABM-torjuntaohjukset). Jokainen isku kartalle tai torjunta kuluttaa resursseja suoraan pelaajan arsenaalista!
-
-Tässä on päivitetty src/App.tsx-koodi, jossa sotilaallinen arsenaali on nyt tiukasti sidottu pelin sisäisiin resursseihin ja tuotettuihin laivueisiin:
-
-    TypeScript
 import React, { useEffect, useRef, useState } from 'react';
 
 interface City {
